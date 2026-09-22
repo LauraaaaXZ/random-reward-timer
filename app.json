@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "Random Reward Timer",
+    "slug": "random-reward-timer",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "package": "com.randomrewardtimer.app",
+      "edgeToEdgeEnabled": true
+    }
+  }
+}
