@@ -13,6 +13,7 @@ export type DailyWorkCapacity = {
   remainingToMaximum: number;
   minimumMet: boolean;
   maximumReached: boolean;
+  configured: boolean;
 };
 
 function localDateKey(date: Date) {
@@ -41,6 +42,7 @@ export async function getDailyWorkCapacity(date=new Date()):Promise<DailyWorkCap
   const localDate=localDateKey(date),{start,end}=dayBounds(localDate);
   const holiday=await isHoliday(localDate);
   const blocks=await listCalendarBlocks(start.toISOString(),end.toISOString());
+  const configured=blocks.some(b=>b.kind==='sleep')&&blocks.some(b=>b.kind==='meal');
   const blocked=mergedBlockedMinutes(blocks,start,end);
   const disposableMinutes=Math.max(0,1440-blocked);
   const minimumMinutes=holiday?0:disposableMinutes*.25;
@@ -59,6 +61,7 @@ export async function getDailyWorkCapacity(date=new Date()):Promise<DailyWorkCap
     remainingToMaximum:Math.max(0,maximumMinutes-creditedWorkMinutes),
     minimumMet:creditedWorkMinutes>=minimumMinutes,
     maximumReached:maximumMinutes>0&&creditedWorkMinutes>=maximumMinutes,
+    configured,
   };
 }
 export async function settleDailyWorkShortfall(localDate:string){
@@ -66,6 +69,7 @@ export async function settleDailyWorkShortfall(localDate:string){
   const existing=await db.getFirstAsync<{local_date:string}>('SELECT local_date FROM daily_work_settlements WHERE local_date=?',localDate);
   if(existing)return null;
   const capacity=await getDailyWorkCapacity(new Date(`${localDate}T12:00:00`));
+  if(!capacity.configured)return null;
   const shortfallMinutes=Math.max(0,capacity.minimumMinutes-capacity.creditedWorkMinutes);
   const charged=shortfallMinutes>0?await chargeAnnualLeaveForWorkShortfall(localDate,shortfallMinutes):0;
   await db.runAsync(`
