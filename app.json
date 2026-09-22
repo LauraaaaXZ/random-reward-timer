@@ -5,8 +5,17 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "plugins": [
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Allow Random Reward Timer to read your device calendars for scheduling and conflict detection."
+        }
+      ]
+    ],
     "android": {
-      "package": "com.randomrewardtimer.app"
+      "package": "com.randomrewardtimer.app",
+      "permissions": ["READ_CALENDAR", "WRITE_CALENDAR"]
     }
   }
 }
