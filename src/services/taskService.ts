@@ -1,107 +1,11 @@
 import { randomUUID } from '../utils/id';
 import { isTaskUnlocked, wouldCreateCycle } from '../domain/dependencies';
 import { DailyPoolMode, Difficulty, Task } from '../domain/types';
-import {
-  createTask,
-  listDependencies,
-  listTasks,
-  markDailyTaskDone,
-  replaceDependencies,
-  updateTask,
-} from '../data/taskRepository';
-
-export type CreateTaskInput = {
-  name: string;
-  estimatedMinutes: number;
-  difficulty: Difficulty;
-  deadlineAt?: string;
-  prerequisiteIds?: string[];
-  dailyPoolMode?: DailyPoolMode;
-};
-
-function localDateKey(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-export async function createTaskWithDependencies(input: CreateTaskInput) {
-  const [, dependencies] = await Promise.all([listTasks(), listDependencies()]);
-  const prerequisiteIds = input.prerequisiteIds ?? [];
-  const id = randomUUID();
-
-  for (const prerequisiteTaskId of prerequisiteIds) {
-    if (wouldCreateCycle(prerequisiteTaskId, id, dependencies)) {
-      throw new Error('This prerequisite would create a dependency cycle.');
-    }
-  }
-
-  const now = new Date().toISOString();
-  const task: Task = {
-    id,
-    name: input.name.trim(),
-    estimatedMinutes: input.estimatedMinutes,
-    remainingMinutes: input.estimatedMinutes,
-    difficulty: input.dailyPoolMode === 'easy_pool' || input.dailyPoolMode === 'both'
-      ? 'easy'
-      : input.difficulty,
-    status: prerequisiteIds.length ? 'locked' : 'active',
-    deadlineAt: input.deadlineAt,
-    preferredToday: false,
-    avoidanceCount: 0,
-    recoveryStack: 0,
-    createdAt: now,
-    dailyPoolMode: input.dailyPoolMode,
-  };
-
-  await createTask(task, prerequisiteIds, input.dailyPoolMode);
-  return task;
-}
-
-export async function setPrerequisites(taskId: string, prerequisiteIds: string[]) {
-  const [, dependencies] = await Promise.all([listTasks(), listDependencies()]);
-
-  for (const prerequisiteTaskId of prerequisiteIds) {
-    if (wouldCreateCycle(prerequisiteTaskId, taskId, dependencies.filter(
-      (edge) => edge.dependentTaskId !== taskId,
-    ))) {
-      throw new Error('This prerequisite would create a dependency cycle.');
-    }
-  }
-
-  await replaceDependencies(taskId, prerequisiteIds);
-  await refreshTaskLocks();
-}
-
-export async function markTaskCompleted(taskId: string) {
-  const tasks = await listTasks();
-  const task = tasks.find((candidate) => candidate.id === taskId);
-  if (!task) throw new Error('Task not found.');
-
-  if (task.dailyPoolMode) {
-    await markDailyTaskDone(taskId, localDateKey());
-    return;
-  }
-
-  await updateTask({
-    ...task,
-    remainingMinutes: 0,
-    status: 'completed',
-    completedAt: new Date().toISOString(),
-  });
-  await refreshTaskLocks();
-}
-
-export async function refreshTaskLocks() {
-  const [tasks, dependencies] = await Promise.all([listTasks(), listDependencies()]);
-
-  for (const task of tasks) {
-    if (task.status === 'completed' || task.status === 'archived') continue;
-    const unlocked = isTaskUnlocked(task, tasks, dependencies);
-    const nextStatus = unlocked ? 'active' : 'locked';
-    if (task.status !== nextStatus) {
-      await updateTask({ ...task, status: nextStatus });
-    }
-  }
-}
+import { createTask,listDependencies,listTasks,markDailyTaskDone,replaceDependencies,updateTask } from '../data/taskRepository';
+export type CreateTaskInput={name:string;estimatedMinutes:number;difficulty:Difficulty;deadlineAt?:string;prerequisiteIds?:string[];dailyPoolMode?:DailyPoolMode};
+function localDateKey(date=new Date()){const year=date.getFullYear(),month=String(date.getMonth()+1).padStart(2,'0'),day=String(date.getDate()).padStart(2,'0');return`${year}-${month}-${day}`}
+export async function createTaskWithDependencies(input:CreateTaskInput){const[,dependencies]=await Promise.all([listTasks(),listDependencies()]);const prerequisiteIds=input.prerequisiteIds??[],id=randomUUID();for(const prerequisiteTaskId of prerequisiteIds)if(wouldCreateCycle(prerequisiteTaskId,id,dependencies))throw new Error('This prerequisite would create a dependency cycle.');const now=new Date().toISOString();const task:Task={id,name:input.name.trim(),estimatedMinutes:input.estimatedMinutes,remainingMinutes:input.estimatedMinutes,difficulty:input.dailyPoolMode==='easy_pool'||input.dailyPoolMode==='both'?'easy':input.difficulty,status:prerequisiteIds.length?'locked':'active',deadlineAt:input.deadlineAt,preferredToday:false,avoidanceCount:0,recoveryStack:0,createdAt:now,dailyPoolMode:input.dailyPoolMode};await createTask(task,prerequisiteIds,input.dailyPoolMode);return task}
+export async function setPrerequisites(taskId:string,prerequisiteIds:string[]){const[,dependencies]=await Promise.all([listTasks(),listDependencies()]);for(const prerequisiteTaskId of prerequisiteIds)if(wouldCreateCycle(prerequisiteTaskId,taskId,dependencies.filter(e=>e.dependentTaskId!==taskId)))throw new Error('This prerequisite would create a dependency cycle.');await replaceDependencies(taskId,prerequisiteIds);await refreshTaskLocks()}
+export async function applyTaskWork(taskId:string,workedMinutes:number){if(!Number.isFinite(workedMinutes)||workedMinutes<=0)return null;const tasks=await listTasks(),task=tasks.find(t=>t.id===taskId);if(!task)throw new Error('Task not found.');if(task.status==='completed'||task.status==='archived')return task;const remaining=Math.max(0,task.remainingMinutes-workedMinutes);const updated={...task,remainingMinutes:remaining};await updateTask(updated);return updated}
+export async function markTaskCompleted(taskId:string){const tasks=await listTasks(),task=tasks.find(c=>c.id===taskId);if(!task)throw new Error('Task not found.');if(task.dailyPoolMode){await markDailyTaskDone(taskId,localDateKey());return}await updateTask({...task,remainingMinutes:0,status:'completed',completedAt:new Date().toISOString()});await refreshTaskLocks()}
+export async function refreshTaskLocks(){const[tasks,dependencies]=await Promise.all([listTasks(),listDependencies()]);for(const task of tasks){if(task.status==='completed'||task.status==='archived')continue;const unlocked=isTaskUnlocked(task,tasks,dependencies),nextStatus=unlocked?'active':'locked';if(task.status!==nextStatus)await updateTask({...task,status:nextStatus})}}
