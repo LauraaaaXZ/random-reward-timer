@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { migrateDatabase } from './data/migrations';
+import { getWallet, Wallet } from './data/economyRepository';
 import { refreshTaskLocks } from './services/taskService';
 import { TaskManager } from './screens/TaskManager';
 import { FocusFlow } from './screens/FocusFlow';
@@ -19,7 +20,9 @@ export default function App() {
 }
 
 function TodayTimeline({onStart}:{onStart:(pool:SessionPool,free:number)=>void}) {
-  return <ScrollView contentContainerStyle={styles.container}><View style={styles.header}><View><Text style={styles.eyebrow}>TODAY</Text><Text style={styles.title}>Your timeline</Text></View><Text style={styles.level}>Lv. 1</Text></View><View style={styles.nextCard}><Text style={styles.nextLabel}>CURRENT WINDOW</Text><Text style={styles.nextTitle}>70 min free</Text><Text style={styles.nextMeta}>Next · Lunch at 12:10</Text><View style={styles.poolRow}><Pool n={30} onPress={()=>onStart(30,70)}/><Pool n={60} onPress={()=>onStart(60,70)}/></View></View><View style={styles.timeline}>{blocks.map(([time,label])=><View key={`${time}-${label}`} style={styles.row}><Text style={styles.time}>{time}</Text><View style={styles.line}/><Text style={[styles.event,label.startsWith('FREE')&&styles.free]}>{label}</Text></View>)}</View><View style={styles.stats}><Text>🔥 Difficulty  2h 10m left</Text><Text>🪙 0   ·   XP 0</Text></View></ScrollView>;
+  const [wallet,setWallet]=useState<Wallet>({coin:0,xp:0,level:1});
+  useEffect(()=>{getWallet().then(setWallet).catch(console.error)},[]);
+  return <ScrollView contentContainerStyle={styles.container}><View style={styles.header}><View><Text style={styles.eyebrow}>TODAY</Text><Text style={styles.title}>Your timeline</Text></View><Text style={styles.level}>Lv. {wallet.level}</Text></View><View style={styles.nextCard}><Text style={styles.nextLabel}>CURRENT WINDOW</Text><Text style={styles.nextTitle}>70 min free</Text><Text style={styles.nextMeta}>Next · Lunch at 12:10</Text><View style={styles.poolRow}><Pool n={30} onPress={()=>onStart(30,70)}/><Pool n={60} onPress={()=>onStart(60,70)}/></View></View><View style={styles.timeline}>{blocks.map(([time,label])=><View key={`${time}-${label}`} style={styles.row}><Text style={styles.time}>{time}</Text><View style={styles.line}/><Text style={[styles.event,label.startsWith('FREE')&&styles.free]}>{label}</Text></View>)}</View><View style={styles.stats}><Text>🔥 Difficulty  2h 10m left</Text><Text>🪙 {wallet.coin}   ·   XP {wallet.xp}</Text></View></ScrollView>;
 }
 function Pool({n,onPress}:{n:number;onPress:()=>void}){return <Pressable onPress={onPress} style={styles.pool}><Text style={styles.poolText}>{n}</Text></Pressable>}
 
