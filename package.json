@@ -11,7 +11,7 @@
     "check": "npm run typecheck && npm run doctor"
   },
   "dependencies": {
-    "@react-native-community/datetimepicker": "8.6.0",
+    "@react-native-community/datetimepicker": "9.1.0",
     "expo": "^57.0.9",
     "expo-sqlite": "~57.0.2",
     "expo-status-bar": "~57.0.0",
