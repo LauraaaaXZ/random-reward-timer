@@ -11,6 +11,7 @@ import {
 import { DailyPoolMode, Difficulty, Task } from '../domain/types';
 import { listTasks } from '../data/taskRepository';
 import { createTaskWithDependencies, markTaskCompleted } from '../services/taskService';
+import { createScheduledRoutine, listScheduledRoutines, ScheduledRoutine } from '../data/scheduledRoutineRepository';
 
 const difficulties: { value: Difficulty; label: string }[] = [
   { value: 'easy', label: 'Easy' },
@@ -35,9 +36,16 @@ export function TaskManager() {
   const [dailyPoolMode, setDailyPoolMode] = useState<DailyPoolMode>('fragment');
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [routines, setRoutines] = useState<ScheduledRoutine[]>([]);
+  const [routineName, setRoutineName] = useState('');
+  const [routineTarget, setRoutineTarget] = useState('23:00');
+  const [routineStart, setRoutineStart] = useState('22:00');
+  const [routineEnd, setRoutineEnd] = useState('23:30');
 
   const reload = useCallback(async () => {
-    setTasks(await listTasks());
+    const [taskRows, routineRows] = await Promise.all([listTasks(), listScheduledRoutines()]);
+    setTasks(taskRows);
+    setRoutines(routineRows);
   }, []);
 
   useEffect(() => {
@@ -94,6 +102,27 @@ export function TaskManager() {
       setTimeout(() => setNotice(null), 4000);
     } catch (error) {
       Alert.alert('Could not complete task', error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function addRoutine() {
+    try {
+      setSaving(true);
+      await createScheduledRoutine({
+        name: routineName,
+        targetTime: routineTarget,
+        windowStart: routineStart,
+        windowEnd: routineEnd,
+      });
+      const confirmedName = routineName.trim();
+      setRoutineName('');
+      await reload();
+      setNotice(`✓ Routine confirmed · ${confirmedName} · target ${routineTarget}`);
+      setTimeout(() => setNotice(null), 4000);
+    } catch (error) {
+      Alert.alert('Could not create routine', error instanceof Error ? error.message : String(error));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -203,6 +232,25 @@ export function TaskManager() {
         </Pressable>
       </View>
 
+      <Text style={styles.sectionTitle}>Scheduled routines</Text>
+      <View style={styles.card}>
+        <Text style={styles.helper}>Use this for early sleep, wake-up, exercise, or other time-window routines. Routines do not enter random task draws.</Text>
+        <Text style={styles.label}>Routine name</Text>
+        <TextInput value={routineName} onChangeText={setRoutineName} placeholder="e.g. Early sleep" style={styles.input}/>
+        <Text style={styles.label}>Target time</Text>
+        <TextInput value={routineTarget} onChangeText={setRoutineTarget} placeholder="23:00" style={styles.input}/>
+        <Text style={styles.label}>Completion window</Text>
+        <View style={styles.timeRow}>
+          <TextInput value={routineStart} onChangeText={setRoutineStart} placeholder="22:00" style={[styles.input,styles.timeInput]}/>
+          <Text style={styles.timeDash}>to</Text>
+          <TextInput value={routineEnd} onChangeText={setRoutineEnd} placeholder="23:30" style={[styles.input,styles.timeInput]}/>
+        </View>
+        <Pressable disabled={saving} onPress={addRoutine} style={styles.primaryButton}>
+          <Text style={styles.primaryButtonText}>{saving ? 'Saving…' : 'Add routine'}</Text>
+        </Pressable>
+        {routines.map(r=><View key={r.id} style={styles.routineRow}><View><Text style={styles.taskName}>{r.name}</Text><Text style={styles.taskMeta}>{r.windowStart}–{r.windowEnd} · target {r.targetTime} · daily</Text></View></View>)}
+      </View>
+
       <Text style={styles.sectionTitle}>Current tasks</Text>
       {tasks.length === 0 ? (
         <Text style={styles.muted}>Create your first task above.</Text>
@@ -251,6 +299,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFBFC',
   },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  timeInput: { flex: 1 },
+  timeDash: { opacity: 0.5 },
+  routineRow: { paddingTop: 10, marginTop: 4, borderTopWidth: 1, borderTopColor: '#EEF1F6' },
   chip: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 999, backgroundColor: '#EEF1F6' },
   chipSelected: { backgroundColor: '#246BFD' },
   prerequisite: {
