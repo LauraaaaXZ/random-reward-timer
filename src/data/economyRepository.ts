@@ -43,11 +43,29 @@ export async function applyReward(input: {
 }) {
   const db = await getDatabase();
   const current = await getWallet();
+
+  // A focus session may only settle its wallet reward once. This protects Alpha
+  // users from double taps/retries crediting the same completed session twice.
+  if (input.sessionId) {
+    const existing = await db.getFirstAsync<{ id: string }>(
+      'SELECT id FROM reward_events WHERE session_id = ? LIMIT 1',
+      input.sessionId,
+    );
+    if (existing) return current;
+  }
+
   const nextXp = current.xp + input.xp;
   const nextLevel = levelFromXp(nextXp);
   const now = new Date().toISOString();
 
   await db.withTransactionAsync(async () => {
+    if (input.sessionId) {
+      const existing = await db.getFirstAsync<{ id: string }>(
+        'SELECT id FROM reward_events WHERE session_id = ? LIMIT 1',
+        input.sessionId,
+      );
+      if (existing) return;
+    }
     await db.runAsync(
       'UPDATE wallet SET coin = coin + ?, xp = ?, level = ?, updated_at = ? WHERE id = 1',
       input.coin,
@@ -68,5 +86,5 @@ export async function applyReward(input: {
     );
   });
 
-  return { coin: current.coin + input.coin, xp: nextXp, level: nextLevel };
+  return getWallet();
 }
