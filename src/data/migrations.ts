@@ -59,6 +59,19 @@ export async function migrateDatabase() {
       CHECK (end_at > start_at)
     );
 
+    CREATE TABLE IF NOT EXISTS external_calendar_events (
+      provider TEXT NOT NULL,
+      external_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      start_at TEXT NOT NULL,
+      end_at TEXT NOT NULL,
+      is_all_day INTEGER NOT NULL DEFAULT 0,
+      last_modified_at TEXT,
+      synced_at TEXT NOT NULL,
+      PRIMARY KEY (provider, external_id),
+      CHECK (end_at > start_at)
+    );
+
     CREATE TABLE IF NOT EXISTS wallet (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       coin INTEGER NOT NULL DEFAULT 0,
@@ -86,6 +99,7 @@ export async function migrateDatabase() {
     CREATE INDEX IF NOT EXISTS idx_dependencies_dependent ON task_dependencies(dependent_task_id);
     CREATE INDEX IF NOT EXISTS idx_daily_rules_completed ON daily_task_rules(last_completed_local_date);
     CREATE INDEX IF NOT EXISTS idx_calendar_blocks_time ON calendar_blocks(start_at, end_at);
+    CREATE INDEX IF NOT EXISTS idx_external_calendar_time ON external_calendar_events(start_at, end_at);
     CREATE INDEX IF NOT EXISTS idx_reward_events_session ON reward_events(session_id);
   `);
 }
