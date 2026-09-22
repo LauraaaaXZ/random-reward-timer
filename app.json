@@ -6,8 +6,7 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "android": {
-      "package": "com.randomrewardtimer.app",
-      "edgeToEdgeEnabled": true
+      "package": "com.randomrewardtimer.app"
     }
   }
 }
