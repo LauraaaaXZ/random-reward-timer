@@ -7,19 +7,29 @@ export async function startSession(input: {
   pool: SessionPool;
   drawMode: DrawMode;
   commitmentMinutes: number;
+  workMode?: 'normal' | 'low_intensity';
 }) {
   const db = await getDatabase();
   const id = randomUUID();
-  await db.runAsync(
-    `INSERT INTO focus_sessions (id, task_id, pool, draw_mode, commitment_minutes, started_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    id,
-    input.taskId,
-    String(input.pool),
-    input.drawMode,
-    input.commitmentMinutes,
-    new Date().toISOString(),
-  );
+  await db.withTransactionAsync(async()=>{
+    await db.runAsync(
+      `INSERT INTO focus_sessions (id, task_id, pool, draw_mode, commitment_minutes, started_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      id,
+      input.taskId,
+      String(input.pool),
+      input.drawMode,
+      input.commitmentMinutes,
+      new Date().toISOString(),
+    );
+    const workMode=input.workMode??'normal';
+    await db.runAsync(
+      'INSERT INTO focus_session_modes (session_id, work_mode, credit_ratio) VALUES (?, ?, ?)',
+      id,
+      workMode,
+      workMode==='low_intensity'?0.5:1,
+    );
+  });
   return id;
 }
 
