@@ -22,6 +22,7 @@ export async function migrateDatabase() {
     CREATE TABLE IF NOT EXISTS prize_progress (id INTEGER PRIMARY KEY CHECK (id = 1),lifetime_draws INTEGER NOT NULL DEFAULT 0,draws_since_ultimate INTEGER NOT NULL DEFAULT 0,ultimate_claims INTEGER NOT NULL DEFAULT 0,updated_at TEXT NOT NULL);
     INSERT OR IGNORE INTO wallet (id,coin,xp,level,updated_at) VALUES (1,0,0,1,datetime('now'));
     INSERT OR IGNORE INTO inventory (resource_key,quantity,updated_at) VALUES ('holiday_pass',0,datetime('now'));
+    INSERT OR IGNORE INTO inventory (resource_key,quantity,updated_at) VALUES ('freedom_credit',0,datetime('now'));
     INSERT OR IGNORE INTO prize_progress (id,lifetime_draws,draws_since_ultimate,ultimate_claims,updated_at) VALUES (1,0,0,0,datetime('now'));
     CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
     CREATE INDEX IF NOT EXISTS idx_tasks_deadline ON tasks(deadline_at);
