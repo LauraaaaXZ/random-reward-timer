@@ -19,3 +19,5 @@ jobs:
         run: npm run typecheck
       - name: Expo Doctor
         run: npm run doctor
+      - name: Android JS bundle smoke test
+        run: npx expo export --platform android --output-dir dist-ci
