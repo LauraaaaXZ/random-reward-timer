@@ -80,8 +80,34 @@ export async function migrateDatabase() {
 
     CREATE TABLE IF NOT EXISTS holiday_days (
       local_date TEXT PRIMARY KEY NOT NULL,
-      source TEXT NOT NULL CHECK (source IN ('pass','draw','grant')),
+      source TEXT NOT NULL CHECK (source IN ('pass','draw','grant','annual_leave','comp_leave')),
       created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS weekly_holiday_grants (
+      week_key TEXT PRIMARY KEY NOT NULL,
+      granted_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS annual_leave_accounts (
+      year INTEGER PRIMARY KEY NOT NULL,
+      base_days REAL NOT NULL DEFAULT 20,
+      level_bonus_days REAL NOT NULL DEFAULT 0,
+      comp_days REAL NOT NULL DEFAULT 0,
+      used_days REAL NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS annual_leave_level_awards (
+      level INTEGER PRIMARY KEY NOT NULL,
+      awarded_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS holiday_work_log (
+      local_date TEXT PRIMARY KEY NOT NULL,
+      worked_minutes INTEGER NOT NULL DEFAULT 0,
+      comp_days_awarded REAL NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS wallet (
