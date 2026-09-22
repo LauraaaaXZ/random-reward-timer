@@ -6,7 +6,7 @@
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
-    "doctor": "expo-doctor",
+    "doctor": "npx expo-doctor",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run doctor"
   },
