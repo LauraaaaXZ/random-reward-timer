@@ -30,7 +30,7 @@ function localDateKey(date = new Date()) {
 }
 
 function minuteOfDay(value: string) {
-  const [h, m] = value.split(':').map(Number);
+  const [h = 0, m = 0] = value.split(':').map(Number);
   return h * 60 + m;
 }
 
