@@ -84,56 +84,24 @@ export async function migrateDatabase() {
       created_at TEXT NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS weekly_holiday_grants (
-      week_key TEXT PRIMARY KEY NOT NULL,
-      granted_at TEXT NOT NULL
-    );
+    CREATE TABLE IF NOT EXISTS weekly_holiday_grants (week_key TEXT PRIMARY KEY NOT NULL, granted_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS annual_leave_accounts (year INTEGER PRIMARY KEY NOT NULL,base_days REAL NOT NULL DEFAULT 20,level_bonus_days REAL NOT NULL DEFAULT 0,comp_days REAL NOT NULL DEFAULT 0,used_days REAL NOT NULL DEFAULT 0,updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS annual_leave_level_awards (level INTEGER PRIMARY KEY NOT NULL,awarded_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS holiday_work_log (local_date TEXT PRIMARY KEY NOT NULL,worked_minutes INTEGER NOT NULL DEFAULT 0,comp_days_awarded REAL NOT NULL DEFAULT 0,updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS wallet (id INTEGER PRIMARY KEY CHECK (id = 1),coin INTEGER NOT NULL DEFAULT 0,xp INTEGER NOT NULL DEFAULT 0,level INTEGER NOT NULL DEFAULT 1,updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS reward_events (id TEXT PRIMARY KEY NOT NULL,session_id TEXT,source TEXT NOT NULL,coin_delta INTEGER NOT NULL DEFAULT 0,xp_delta INTEGER NOT NULL DEFAULT 0,multiplier REAL NOT NULL DEFAULT 1,created_at TEXT NOT NULL,FOREIGN KEY (session_id) REFERENCES focus_sessions(id) ON DELETE SET NULL);
 
-    CREATE TABLE IF NOT EXISTS annual_leave_accounts (
-      year INTEGER PRIMARY KEY NOT NULL,
-      base_days REAL NOT NULL DEFAULT 20,
-      level_bonus_days REAL NOT NULL DEFAULT 0,
-      comp_days REAL NOT NULL DEFAULT 0,
-      used_days REAL NOT NULL DEFAULT 0,
-      updated_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS annual_leave_level_awards (
-      level INTEGER PRIMARY KEY NOT NULL,
-      awarded_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS holiday_work_log (
-      local_date TEXT PRIMARY KEY NOT NULL,
-      worked_minutes INTEGER NOT NULL DEFAULT 0,
-      comp_days_awarded REAL NOT NULL DEFAULT 0,
-      updated_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS wallet (
+    CREATE TABLE IF NOT EXISTS prize_progress (
       id INTEGER PRIMARY KEY CHECK (id = 1),
-      coin INTEGER NOT NULL DEFAULT 0,
-      xp INTEGER NOT NULL DEFAULT 0,
-      level INTEGER NOT NULL DEFAULT 1,
+      lifetime_draws INTEGER NOT NULL DEFAULT 0,
+      draws_since_ultimate INTEGER NOT NULL DEFAULT 0,
+      ultimate_claims INTEGER NOT NULL DEFAULT 0,
       updated_at TEXT NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS reward_events (
-      id TEXT PRIMARY KEY NOT NULL,
-      session_id TEXT,
-      source TEXT NOT NULL,
-      coin_delta INTEGER NOT NULL DEFAULT 0,
-      xp_delta INTEGER NOT NULL DEFAULT 0,
-      multiplier REAL NOT NULL DEFAULT 1,
-      created_at TEXT NOT NULL,
-      FOREIGN KEY (session_id) REFERENCES focus_sessions(id) ON DELETE SET NULL
-    );
-
-    INSERT OR IGNORE INTO wallet (id, coin, xp, level, updated_at)
-    VALUES (1, 0, 0, 1, datetime('now'));
-
-    INSERT OR IGNORE INTO inventory (resource_key, quantity, updated_at)
-    VALUES ('holiday_pass', 0, datetime('now'));
+    INSERT OR IGNORE INTO wallet (id, coin, xp, level, updated_at) VALUES (1, 0, 0, 1, datetime('now'));
+    INSERT OR IGNORE INTO inventory (resource_key, quantity, updated_at) VALUES ('holiday_pass', 0, datetime('now'));
+    INSERT OR IGNORE INTO prize_progress (id,lifetime_draws,draws_since_ultimate,ultimate_claims,updated_at) VALUES (1,0,0,0,datetime('now'));
 
     CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
     CREATE INDEX IF NOT EXISTS idx_tasks_deadline ON tasks(deadline_at);
