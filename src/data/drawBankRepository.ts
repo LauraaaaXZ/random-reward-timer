@@ -18,12 +18,26 @@ async function ensureTable(){
   );
   INSERT OR IGNORE INTO draw_pool_spend(pool,spent_draws,updated_at) VALUES ('time',0,datetime('now'));
   INSERT OR IGNORE INTO draw_pool_spend(pool,spent_draws,updated_at) VALUES ('function',0,datetime('now'));
+  CREATE TABLE IF NOT EXISTS draw_credit_events (
+   source_key TEXT PRIMARY KEY NOT NULL,
+   amount REAL NOT NULL,
+   created_at TEXT NOT NULL
+  );
  `);
 }
-export async function addDrawProgress(amount:number){
- if(amount<=0)return;
- await ensureTable();const db=await getDatabase();
- await db.runAsync('UPDATE draw_wallet SET balance=balance+?,updated_at=? WHERE id=1',amount,new Date().toISOString());
+export async function addDrawProgress(amount:number,sourceKey?:string){
+ if(amount<=0)return false;
+ await ensureTable();const db=await getDatabase(),now=new Date().toISOString();
+ if(!sourceKey){await db.runAsync('UPDATE draw_wallet SET balance=balance+?,updated_at=? WHERE id=1',amount,now);return true;}
+ let added=false;
+ await db.withTransactionAsync(async()=>{
+  const existing=await db.getFirstAsync<{source_key:string}>('SELECT source_key FROM draw_credit_events WHERE source_key=?',sourceKey);
+  if(existing)return;
+  await db.runAsync('INSERT INTO draw_credit_events(source_key,amount,created_at) VALUES (?,?,?)',sourceKey,amount,now);
+  await db.runAsync('UPDATE draw_wallet SET balance=balance+?,updated_at=? WHERE id=1',amount,now);
+  added=true;
+ });
+ return added;
 }
 export async function getDrawBank(){
  await ensureTable();const db=await getDatabase();
