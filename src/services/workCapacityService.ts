@@ -42,7 +42,8 @@ export async function getDailyWorkCapacity(date=new Date()):Promise<DailyWorkCap
   const localDate=localDateKey(date),{start,end}=dayBounds(localDate);
   const holiday=await isHoliday(localDate);
   const blocks=await listCalendarBlocks(start.toISOString(),end.toISOString());
-  const configured=blocks.some(b=>b.kind==='sleep')&&blocks.some(b=>b.kind==='meal');
+  const mealCount=blocks.filter(b=>b.kind==='meal').length;
+  const configured=blocks.some(b=>b.kind==='sleep')&&mealCount>=2;
   const blocked=mergedBlockedMinutes(blocks,start,end);
   const disposableMinutes=Math.max(0,1440-blocked);
   const minimumMinutes=holiday?0:disposableMinutes*.25;
