@@ -1,5 +1,6 @@
 export type Difficulty = 'easy' | 'medium' | 'hard' | 'super_difficult';
 export type TaskStatus = 'active' | 'locked' | 'completed' | 'archived';
+export type DailyPoolMode = 'fragment' | 'easy_pool' | 'both';
 
 export interface Task {
   id: string;
@@ -15,6 +16,8 @@ export interface Task {
   recoveryStack: number;
   createdAt: string;
   completedAt?: string;
+  dailyPoolMode?: DailyPoolMode;
+  dailyLastCompletedDate?: string;
 }
 
 export interface TaskDependency {
