@@ -1,10 +1,11 @@
 import { randomUUID } from '../utils/id';
 import { isTaskUnlocked, wouldCreateCycle } from '../domain/dependencies';
-import { Difficulty, Task } from '../domain/types';
+import { DailyPoolMode, Difficulty, Task } from '../domain/types';
 import {
   createTask,
   listDependencies,
   listTasks,
+  markDailyTaskDone,
   replaceDependencies,
   updateTask,
 } from '../data/taskRepository';
@@ -15,10 +16,18 @@ export type CreateTaskInput = {
   difficulty: Difficulty;
   deadlineAt?: string;
   prerequisiteIds?: string[];
+  dailyPoolMode?: DailyPoolMode;
 };
 
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export async function createTaskWithDependencies(input: CreateTaskInput) {
-  const [tasks, dependencies] = await Promise.all([listTasks(), listDependencies()]);
+  const [, dependencies] = await Promise.all([listTasks(), listDependencies()]);
   const prerequisiteIds = input.prerequisiteIds ?? [];
   const id = randomUUID();
 
@@ -34,21 +43,24 @@ export async function createTaskWithDependencies(input: CreateTaskInput) {
     name: input.name.trim(),
     estimatedMinutes: input.estimatedMinutes,
     remainingMinutes: input.estimatedMinutes,
-    difficulty: input.difficulty,
+    difficulty: input.dailyPoolMode === 'easy_pool' || input.dailyPoolMode === 'both'
+      ? 'easy'
+      : input.difficulty,
     status: prerequisiteIds.length ? 'locked' : 'active',
     deadlineAt: input.deadlineAt,
     preferredToday: false,
     avoidanceCount: 0,
     recoveryStack: 0,
     createdAt: now,
+    dailyPoolMode: input.dailyPoolMode,
   };
 
-  await createTask(task, prerequisiteIds);
+  await createTask(task, prerequisiteIds, input.dailyPoolMode);
   return task;
 }
 
 export async function setPrerequisites(taskId: string, prerequisiteIds: string[]) {
-  const [tasks, dependencies] = await Promise.all([listTasks(), listDependencies()]);
+  const [, dependencies] = await Promise.all([listTasks(), listDependencies()]);
 
   for (const prerequisiteTaskId of prerequisiteIds) {
     if (wouldCreateCycle(prerequisiteTaskId, taskId, dependencies.filter(
@@ -66,6 +78,11 @@ export async function markTaskCompleted(taskId: string) {
   const tasks = await listTasks();
   const task = tasks.find((candidate) => candidate.id === taskId);
   if (!task) throw new Error('Task not found.');
+
+  if (task.dailyPoolMode) {
+    await markDailyTaskDone(taskId, localDateKey());
+    return;
+  }
 
   await updateTask({
     ...task,
