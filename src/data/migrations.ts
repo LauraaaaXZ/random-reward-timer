@@ -10,7 +10,8 @@ export async function migrateDatabase() {
     CREATE TABLE IF NOT EXISTS scheduled_routines (id TEXT PRIMARY KEY NOT NULL,name TEXT NOT NULL,target_time TEXT NOT NULL,window_start TEXT NOT NULL,window_end TEXT NOT NULL,repeat_mode TEXT NOT NULL DEFAULT 'daily' CHECK (repeat_mode IN ('daily')),active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS routine_completions (routine_id TEXT NOT NULL,local_date TEXT NOT NULL,completed_at TEXT NOT NULL,PRIMARY KEY (routine_id,local_date),FOREIGN KEY (routine_id) REFERENCES scheduled_routines(id) ON DELETE CASCADE);
     CREATE TABLE IF NOT EXISTS meal_schedules (id TEXT PRIMARY KEY NOT NULL,label TEXT NOT NULL,start_time TEXT NOT NULL,duration_minutes INTEGER NOT NULL DEFAULT 60 CHECK (duration_minutes = 60),active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),created_at TEXT NOT NULL);
-    CREATE TABLE IF NOT EXISTS sleep_schedules (id TEXT PRIMARY KEY NOT NULL,start_time TEXT NOT NULL,duration_minutes INTEGER NOT NULL CHECK (duration_minutes >= 240 AND duration_minutes <= 720),active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS sleep_schedules (id TEXT PRIMARY KEY NOT NULL,start_time TEXT NOT NULL,duration_minutes INTEGER NOT NULL DEFAULT 480 CHECK (duration_minutes = 480),active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS sleep_sessions (local_date TEXT PRIMARY KEY NOT NULL,actual_start_at TEXT NOT NULL,actual_end_at TEXT NOT NULL,confirmed_at TEXT NOT NULL,CHECK (actual_end_at > actual_start_at));
     CREATE TABLE IF NOT EXISTS focus_sessions (id TEXT PRIMARY KEY NOT NULL,task_id TEXT NOT NULL,pool TEXT NOT NULL,draw_mode TEXT NOT NULL,commitment_minutes INTEGER NOT NULL,actual_minutes INTEGER,started_at TEXT,ended_at TEXT,FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE);
     CREATE TABLE IF NOT EXISTS focus_session_modes (session_id TEXT PRIMARY KEY NOT NULL,work_mode TEXT NOT NULL DEFAULT 'normal' CHECK (work_mode IN ('normal','low_intensity')),credit_ratio REAL NOT NULL DEFAULT 1 CHECK (credit_ratio > 0 AND credit_ratio <= 1),FOREIGN KEY (session_id) REFERENCES focus_sessions(id) ON DELETE CASCADE);
     CREATE TABLE IF NOT EXISTS daily_work_settlements (local_date TEXT PRIMARY KEY NOT NULL,disposable_minutes INTEGER NOT NULL,minimum_minutes REAL NOT NULL,maximum_minutes REAL NOT NULL,credited_work_minutes REAL NOT NULL,shortfall_minutes REAL NOT NULL,leave_days_charged REAL NOT NULL DEFAULT 0,settled_at TEXT NOT NULL);
@@ -37,6 +38,7 @@ export async function migrateDatabase() {
     CREATE INDEX IF NOT EXISTS idx_routine_active ON scheduled_routines(active);
     CREATE INDEX IF NOT EXISTS idx_meal_active ON meal_schedules(active,start_time);
     CREATE INDEX IF NOT EXISTS idx_sleep_active ON sleep_schedules(active,start_time);
+    CREATE INDEX IF NOT EXISTS idx_sleep_sessions_time ON sleep_sessions(actual_start_at,actual_end_at);
     CREATE INDEX IF NOT EXISTS idx_calendar_blocks_time ON calendar_blocks(start_at,end_at);
     CREATE INDEX IF NOT EXISTS idx_external_calendar_time ON external_calendar_events(start_at,end_at);
     CREATE INDEX IF NOT EXISTS idx_reward_events_session ON reward_events(session_id);
