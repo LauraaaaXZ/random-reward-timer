@@ -1,11 +1,13 @@
 import { getDatabase } from './database';
 import { GAME_CONFIG } from '../config/gameConfig';
 import { randomUUID } from '../utils/id';
+import { getFixedHoliday, listUpcomingFixedHolidays } from '../config/fixedHolidays';
 
 export type HolidayDay = {
   localDate: string;
-  source: 'pass' | 'draw' | 'grant';
+  source: 'pass' | 'draw' | 'grant' | 'fixed';
   createdAt: string;
+  name?: string;
 };
 
 function validLocalDate(value: string) {
@@ -114,6 +116,7 @@ export async function grantHolidayFromDraw(localDate: string) {
 }
 
 export async function isHoliday(localDate: string) {
+  if (getFixedHoliday(localDate)) return true;
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ local_date: string }>(
     'SELECT local_date FROM holiday_days WHERE local_date = ?',
@@ -128,5 +131,15 @@ export async function listUpcomingHolidays(fromLocalDate: string) {
     'SELECT local_date, source, created_at FROM holiday_days WHERE local_date >= ? ORDER BY local_date',
     fromLocalDate,
   );
-  return rows.map(row => ({ localDate: row.local_date, source: row.source, createdAt: row.created_at }));
+  const custom = rows.map(row => ({ localDate: row.local_date, source: row.source, createdAt: row.created_at } as HolidayDay));
+  const fixed = listUpcomingFixedHolidays(fromLocalDate).map(item => ({
+    localDate: item.localDate,
+    source: 'fixed' as const,
+    createdAt: '',
+    name: item.name,
+  }));
+  const merged = [...custom, ...fixed];
+  const byDate = new Map<string, HolidayDay>();
+  for (const item of merged) if (!byDate.has(item.localDate) || item.source !== 'fixed') byDate.set(item.localDate, item);
+  return [...byDate.values()].sort((a,b)=>a.localDate.localeCompare(b.localDate));
 }
