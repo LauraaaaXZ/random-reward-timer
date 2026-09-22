@@ -1,5 +1,5 @@
 import { getDatabase } from './database';
-import { Difficulty, Task, TaskDependency, TaskStatus } from '../domain/types';
+import { DailyPoolMode, Difficulty, Task, TaskDependency, TaskStatus } from '../domain/types';
 
 type TaskRow = {
   id: string;
@@ -15,6 +15,8 @@ type TaskRow = {
   recovery_stack: number;
   created_at: string;
   completed_at: string | null;
+  daily_pool_mode: DailyPoolMode | null;
+  daily_last_completed_date: string | null;
 };
 
 function rowToTask(row: TaskRow): Task {
@@ -32,19 +34,34 @@ function rowToTask(row: TaskRow): Task {
     recoveryStack: row.recovery_stack,
     createdAt: row.created_at,
     completedAt: row.completed_at ?? undefined,
+    dailyPoolMode: row.daily_pool_mode ?? undefined,
+    dailyLastCompletedDate: row.daily_last_completed_date ?? undefined,
   };
 }
+
+const TASK_SELECT = `
+  SELECT
+    t.*,
+    d.pool_mode AS daily_pool_mode,
+    d.last_completed_local_date AS daily_last_completed_date
+  FROM tasks t
+  LEFT JOIN daily_task_rules d ON d.task_id = t.id
+`;
 
 export async function listTasks(): Promise<Task[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<TaskRow>(
-    'SELECT * FROM tasks WHERE status <> ? ORDER BY created_at DESC',
+    TASK_SELECT + ' WHERE t.status <> ? ORDER BY t.created_at DESC',
     'archived',
   );
   return rows.map(rowToTask);
 }
 
-export async function createTask(task: Task, prerequisiteIds: string[] = []) {
+export async function createTask(
+  task: Task,
+  prerequisiteIds: string[] = [],
+  dailyPoolMode?: DailyPoolMode,
+) {
   const db = await getDatabase();
 
   await db.withTransactionAsync(async () => {
@@ -68,6 +85,14 @@ export async function createTask(task: Task, prerequisiteIds: string[] = []) {
       task.createdAt,
       task.completedAt ?? null,
     );
+
+    if (dailyPoolMode) {
+      await db.runAsync(
+        'INSERT INTO daily_task_rules (task_id, pool_mode, last_completed_local_date) VALUES (?, ?, NULL)',
+        task.id,
+        dailyPoolMode,
+      );
+    }
 
     for (const prerequisiteTaskId of prerequisiteIds) {
       await db.runAsync(
@@ -99,6 +124,15 @@ export async function updateTask(task: Task) {
     task.recoveryStack,
     task.completedAt ?? null,
     task.id,
+  );
+}
+
+export async function markDailyTaskDone(taskId: string, localDate: string) {
+  const db = await getDatabase();
+  await db.runAsync(
+    'UPDATE daily_task_rules SET last_completed_local_date = ? WHERE task_id = ?',
+    localDate,
+    taskId,
   );
 }
 
