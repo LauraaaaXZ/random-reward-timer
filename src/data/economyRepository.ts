@@ -3,8 +3,29 @@ import { randomUUID } from '../utils/id';
 
 export type Wallet = { coin: number; xp: number; level: number };
 
-function levelFromXp(xp: number) {
+export function levelFromXp(xp: number) {
   return Math.floor(Math.sqrt(Math.max(0, xp) / 100)) + 1;
+}
+
+export function xpForLevel(level: number) {
+  return 100 * Math.max(0, level - 1) ** 2;
+}
+
+export function xpProgress(xp: number) {
+  const level = levelFromXp(xp);
+  const currentLevelXp = xpForLevel(level);
+  const nextLevelXp = xpForLevel(level + 1);
+  const span = Math.max(1, nextLevelXp - currentLevelXp);
+  const earnedInLevel = Math.max(0, xp - currentLevelXp);
+  return {
+    level,
+    currentLevelXp,
+    nextLevelXp,
+    earnedInLevel,
+    neededInLevel: span,
+    remainingToNextLevel: Math.max(0, nextLevelXp - xp),
+    progress: Math.min(1, earnedInLevel / span),
+  };
 }
 
 export async function getWallet(): Promise<Wallet> {
