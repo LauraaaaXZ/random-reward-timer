@@ -6,6 +6,8 @@ import { chargeAnnualLeaveForWorkShortfall } from '../data/leaveRepository';
 export type DailyWorkCapacity = {
   localDate: string;
   disposableMinutes: number;
+  baselineProtectedMinutes: number;
+  eventProtectedMinutes: number;
   minimumMinutes: number;
   maximumMinutes: number;
   creditedWorkMinutes: number;
@@ -44,8 +46,10 @@ export async function getDailyWorkCapacity(date=new Date()):Promise<DailyWorkCap
   const blocks=await listCalendarBlocks(start.toISOString(),end.toISOString());
   const mealCount=blocks.filter(b=>b.kind==='meal').length;
   const configured=blocks.some(b=>b.kind==='sleep')&&mealCount>=2;
+  const baselineProtectedMinutes=mergedBlockedMinutes(blocks.filter(b=>b.kind==='sleep'||b.kind==='meal'),start,end);
   const blocked=mergedBlockedMinutes(blocks,start,end);
-  const disposableMinutes=Math.max(0,1440-blocked);
+  const eventProtectedMinutes=Math.max(0,blocked-baselineProtectedMinutes);
+  const disposableMinutes=Math.max(0,1440-baselineProtectedMinutes-eventProtectedMinutes);
   const minimumMinutes=holiday?0:disposableMinutes*.25;
   const maximumMinutes=holiday?0:disposableMinutes*.5;
   const db=await getDatabase();
@@ -57,7 +61,7 @@ export async function getDailyWorkCapacity(date=new Date()):Promise<DailyWorkCap
   `,start.toISOString(),end.toISOString());
   const creditedWorkMinutes=Number(row?.credited??0);
   return{
-    localDate,disposableMinutes,minimumMinutes,maximumMinutes,creditedWorkMinutes,
+    localDate,disposableMinutes,baselineProtectedMinutes,eventProtectedMinutes,minimumMinutes,maximumMinutes,creditedWorkMinutes,
     remainingToMinimum:Math.max(0,minimumMinutes-creditedWorkMinutes),
     remainingToMaximum:Math.max(0,maximumMinutes-creditedWorkMinutes),
     minimumMet:creditedWorkMinutes>=minimumMinutes,
