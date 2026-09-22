@@ -18,6 +18,13 @@ export const GAME_CONFIG = {
     chooseCoinCost: 20,
     nextDrawDelayOptionsMinutes: [0, 15, 30, 60] as const,
   },
+  taskInvitation: {
+    dailyChance: 0.7,
+    secondInviteChance: 0.2,
+    minimumWindowMinutes: 25,
+    edgeBufferMinutes: 10,
+    visibleForMinutes: 45,
+  },
   weeklyRoutine: {
     leisure: {
       weeklyCredits: 3,
