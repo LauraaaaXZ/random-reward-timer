@@ -65,7 +65,7 @@ export function RewardsScreen() {
 
     <View style={styles.card}>
       <Text style={styles.kicker}>UPCOMING HOLIDAYS</Text>
-      {holidays.length===0?<Text style={styles.meta}>No planned holidays yet.</Text>:holidays.map(h=><View key={h.localDate} style={styles.holidayRow}><Text style={styles.holidayDate}>{h.localDate}</Text><Text style={styles.meta}>{h.source}</Text></View>)}
+      {holidays.length===0?<Text style={styles.meta}>No planned holidays yet.</Text>:holidays.map(h=><View key={h.localDate} style={styles.holidayRow}><View><Text style={styles.holidayDate}>{h.localDate}</Text>{h.name?<Text style={styles.meta}>{h.name}</Text>:null}</View><Text style={styles.meta}>{h.source==='fixed'?'HK holiday':h.source}</Text></View>)}
     </View>
   </ScrollView>;
 }
