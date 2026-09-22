@@ -14,10 +14,15 @@ export const TEN_DRAW_CHOICES:Record<RewardPool,readonly TenDrawChoice[]>={
  ],
 };
 
-export function taskDrawReward(difficulty:'easy'|'medium'|'hard'|'super_difficult',random=Math.random){
- const ranges={easy:[.15,.35],medium:[.3,.65],hard:[.55,1],super_difficult:[.8,1.5]} as const;
- const [lo,hi]=ranges[difficulty];const raw=lo+(hi-lo)*random();
- // Each completed task earns a random split between Time and Function draw progress.
- const timeShare=.3+.4*random();
- return{total:Number(raw.toFixed(2)),time:Number((raw*timeShare).toFixed(2)),function:Number((raw*(1-timeShare)).toFixed(2))};
+// Completing a task grants generic draw progress plus a random Coin bonus.
+// The player decides later whether to spend banked draws in Time or Function Pool.
+export function taskCompletionReward(difficulty:'easy'|'medium'|'hard'|'super_difficult',workedMinutes:number,random=Math.random){
+ const baseRanges={easy:[.15,.35],medium:[.3,.65],hard:[.55,1],super_difficult:[.8,1.5]} as const;
+ const coinRanges={easy:[2,8],medium:[5,14],hard:[9,22],super_difficult:[15,35]} as const;
+ const [lo,hi]=baseRanges[difficulty];
+ const timeFactor=Math.min(1.5,Math.max(.6,Math.sqrt(Math.max(5,workedMinutes)/30)));
+ const drawProgress=(lo+(hi-lo)*random())*timeFactor;
+ const [coinLo,coinHi]=coinRanges[difficulty];
+ const coin=Math.round(coinLo+(coinHi-coinLo)*random());
+ return{drawProgress:Number(drawProgress.toFixed(2)),coin};
 }
