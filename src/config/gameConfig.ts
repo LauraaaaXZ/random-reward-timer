@@ -10,8 +10,7 @@ export const GAME_CONFIG = {
   emergencyCreditRepayment: { min: 1.25, max: 1.5 },
   preferred: { maxTasks: 3, maxMinutes: 300 },
   levelLockAfterInactiveDays: 7,
-  exemptionExpiryDays: 14,
-  exemptionWarningDays: 3,
+  annualLeaveMinutesPerDay: 480,
   holidayPass: {
     coinCost: 120,
   },
