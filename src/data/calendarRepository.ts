@@ -1,6 +1,7 @@
 import { getDatabase } from './database';
 import { CalendarBlock, CalendarBlockKind } from '../domain/types';
 import { randomUUID } from '../utils/id';
+import { listMealSchedules } from './mealScheduleRepository';
 
 type CalendarRow = {
   id: string;
@@ -32,6 +33,8 @@ function rowToBlock(row: CalendarRow): CalendarBlock {
   return { id: row.id, title: row.title, startAt: row.start_at, endAt: row.end_at, kind: row.kind };
 }
 
+function localDateKey(date:Date){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;}
+
 function externalRowToBlock(row: ExternalCalendarRow): CalendarBlock {
   return {
     id: `${row.provider}:${row.external_id}`,
@@ -44,7 +47,7 @@ function externalRowToBlock(row: ExternalCalendarRow): CalendarBlock {
 
 export async function listCalendarBlocks(startAt: string, endAt: string): Promise<CalendarBlock[]> {
   const db = await getDatabase();
-  const [localRows, externalRows] = await Promise.all([
+  const [localRows, externalRows, meals] = await Promise.all([
     db.getAllAsync<CalendarRow>(
       `SELECT id, title, start_at, end_at, kind FROM calendar_blocks
        WHERE end_at > ? AND start_at < ? ORDER BY start_at`,
@@ -57,11 +60,25 @@ export async function listCalendarBlocks(startAt: string, endAt: string): Promis
       startAt,
       endAt,
     ),
+    listMealSchedules(),
   ]);
 
+  const rangeStart=new Date(startAt),rangeEnd=new Date(endAt);
+  const mealBlocks:CalendarBlock[]=[];
+  const cursor=new Date(rangeStart);cursor.setHours(0,0,0,0);
+  while(cursor<rangeEnd){
+    const day=localDateKey(cursor);
+    for(const meal of meals){
+      const s=new Date(`${day}T${meal.startTime}:00`);
+      const e=new Date(s.getTime()+60*60000);
+      if(e>rangeStart&&s<rangeEnd)mealBlocks.push({id:`meal:${meal.id}:${day}`,title:meal.label,startAt:s.toISOString(),endAt:e.toISOString(),kind:'meal'});
+    }
+    cursor.setDate(cursor.getDate()+1);
+  }
   return [
     ...localRows.map(rowToBlock),
     ...externalRows.map(externalRowToBlock),
+    ...mealBlocks,
   ].sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
 }
 
