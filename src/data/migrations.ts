@@ -31,6 +31,13 @@ export async function migrateDatabase() {
       CHECK (prerequisite_task_id <> dependent_task_id)
     );
 
+    CREATE TABLE IF NOT EXISTS daily_task_rules (
+      task_id TEXT PRIMARY KEY NOT NULL,
+      pool_mode TEXT NOT NULL CHECK (pool_mode IN ('fragment','easy_pool','both')),
+      last_completed_local_date TEXT,
+      FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS focus_sessions (
       id TEXT PRIMARY KEY NOT NULL,
       task_id TEXT NOT NULL,
@@ -77,6 +84,7 @@ export async function migrateDatabase() {
     CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
     CREATE INDEX IF NOT EXISTS idx_tasks_deadline ON tasks(deadline_at);
     CREATE INDEX IF NOT EXISTS idx_dependencies_dependent ON task_dependencies(dependent_task_id);
+    CREATE INDEX IF NOT EXISTS idx_daily_rules_completed ON daily_task_rules(last_completed_local_date);
     CREATE INDEX IF NOT EXISTS idx_calendar_blocks_time ON calendar_blocks(start_at, end_at);
     CREATE INDEX IF NOT EXISTS idx_reward_events_session ON reward_events(session_id);
   `);
