@@ -20,12 +20,13 @@ type SelectionMode = 'random_task' | 'fixed_task';
 type RewardResult = { coin:number; xp:number; multiplier:number; overtimeMinutes:number; multiTask:number; compLeaveDays?:number; drawProgress?:number; taskCoinBonus?:number; wallet?:Wallet; rest?:RestState|null };
 function localDateKey(date=new Date()){const y=date.getFullYear();const m=String(date.getMonth()+1).padStart(2,'0');const d=String(date.getDate()).padStart(2,'0');return `${y}-${m}-${d}`;}
 
-export function FocusFlow({ pool = 30, freeMinutes = 30, onClose }: { pool?: SessionPool; freeMinutes?: number; onClose: () => void }) {
+export function FocusFlow({ pool = 30, freeMinutes = 30, initialTaskId, onClose }: { pool?: SessionPool; freeMinutes?: number; initialTaskId?: string; onClose: () => void }) {
   const [phase,setPhase]=useState<Phase>('draw'); const [selectionMode,setSelectionMode]=useState<SelectionMode>('random_task'); const [mode,setMode]=useState<DrawMode>('normal');
   const [task,setTask]=useState<Task|null>(null); const [fixedCandidates,setFixedCandidates]=useState<Task[]>([]); const [targetSeconds,setTargetSeconds]=useState(0); const [elapsedSeconds,setElapsedSeconds]=useState(0);
   const [completed,setCompleted]=useState(false); const [additionalTasks,setAdditionalTasks]=useState<Task[]>([]); const [completionCandidates,setCompletionCandidates]=useState<Task[]>([]); const [sessionId,setSessionId]=useState<string|null>(null); const [reward,setReward]=useState<RewardResult|null>(null);
   useEffect(()=>{ if(phase!=='timer')return; const id=setInterval(()=>setElapsedSeconds(v=>v+1),1000); return()=>clearInterval(id); },[phase]);
   useEffect(()=>{ if(phase==='draw'&&selectionMode==='fixed_task') listTasks().then(tasks=>setFixedCandidates(eligibleTasks(tasks))).catch(e=>Alert.alert('Could not load tasks',String(e))); },[phase,selectionMode]);
+  useEffect(()=>{if(!initialTaskId||phase!=='draw')return;listTasks().then(tasks=>{const selected=tasks.find(t=>t.id===initialTaskId&&t.status==='active');if(selected){setSelectionMode('fixed_task');setFixedCandidates(eligibleTasks(tasks));randomizeTime(selected);}}).catch(e=>Alert.alert('Could not open invitation',String(e)));},[initialTaskId]);
   const remaining=targetSeconds-elapsedSeconds; const overtime=Math.max(0,-remaining); const displaySeconds=Math.abs(remaining); const clock=useMemo(()=>`${String(Math.floor(displaySeconds/60)).padStart(2,'0')}:${String(displaySeconds%60).padStart(2,'0')}`,[displaySeconds]);
   function randomizeTime(selected:Task){ setTask(selected); setTargetSeconds(commitmentMinutes(selected,pool,freeMinutes)*60); }
   async function draw(){const tasks=await listTasks();const candidates=mode==='normal'?eligibleTasks(tasks):difficultyTasks(tasks);const selected=weightedTaskDraw(candidates);if(!selected){Alert.alert('No eligible tasks',mode==='normal'?'Add or unlock a task first.':'No Difficulty tasks are currently eligible.');return;}randomizeTime(selected);}
