@@ -43,6 +43,15 @@ export async function migrateDatabase() {
       FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS calendar_blocks (
+      id TEXT PRIMARY KEY NOT NULL,
+      title TEXT NOT NULL,
+      start_at TEXT NOT NULL,
+      end_at TEXT NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('calendar','sleep','meal','dnd','recovery')),
+      CHECK (end_at > start_at)
+    );
+
     CREATE TABLE IF NOT EXISTS wallet (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       coin INTEGER NOT NULL DEFAULT 0,
@@ -68,6 +77,7 @@ export async function migrateDatabase() {
     CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
     CREATE INDEX IF NOT EXISTS idx_tasks_deadline ON tasks(deadline_at);
     CREATE INDEX IF NOT EXISTS idx_dependencies_dependent ON task_dependencies(dependent_task_id);
+    CREATE INDEX IF NOT EXISTS idx_calendar_blocks_time ON calendar_blocks(start_at, end_at);
     CREATE INDEX IF NOT EXISTS idx_reward_events_session ON reward_events(session_id);
   `);
 }
