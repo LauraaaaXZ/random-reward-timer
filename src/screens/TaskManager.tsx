@@ -21,7 +21,7 @@ const difficulties: { value: Difficulty; label: string }[] = [
 
 const dailyModes: { value: DailyPoolMode; label: string }[] = [
   { value: 'fragment', label: 'Fragment time' },
-  { value: 'easy_pool', label: 'Easy pool' },
+  { value: 'easy_pool', label: 'Main draw pool' },
   { value: 'both', label: 'Both' },
 ];
 
@@ -34,6 +34,7 @@ export function TaskManager() {
   const [isDaily, setIsDaily] = useState(false);
   const [dailyPoolMode, setDailyPoolMode] = useState<DailyPoolMode>('fragment');
   const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setTasks(await listTasks());
@@ -75,6 +76,8 @@ export function TaskManager() {
       setIsDaily(false);
       setDailyPoolMode('fragment');
       await reload();
+      setNotice(`✓ New task confirmed · ${name.trim()} · ${Math.round(parsedMinutes)} min`);
+      setTimeout(() => setNotice(null), 4000);
     } catch (error) {
       Alert.alert('Could not create task', error instanceof Error ? error.message : String(error));
     } finally {
@@ -84,8 +87,11 @@ export function TaskManager() {
 
   async function complete(taskId: string) {
     try {
+      const completedTask = tasks.find((task) => task.id === taskId);
       await markTaskCompleted(taskId);
       await reload();
+      setNotice(`✓ Task completed · ${completedTask?.name ?? 'Task'}`);
+      setTimeout(() => setNotice(null), 4000);
     } catch (error) {
       Alert.alert('Could not complete task', error instanceof Error ? error.message : String(error));
     }
@@ -101,6 +107,7 @@ export function TaskManager() {
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      {notice ? <View style={styles.notice}><Text style={styles.noticeText}>{notice}</Text></View> : null}
       <Text style={styles.heading}>Tasks</Text>
       <Text style={styles.subheading}>Quick add with daily tasks and prerequisites.</Text>
 
@@ -156,12 +163,10 @@ export function TaskManager() {
         <Text style={styles.label}>Difficulty</Text>
         <View style={styles.wrap}>
           {difficulties.map((item) => {
-            const easyLocked = isDaily && (dailyPoolMode === 'easy_pool' || dailyPoolMode === 'both');
-            const selected = easyLocked ? item.value === 'easy' : difficulty === item.value;
+            const selected = difficulty === item.value;
             return (
               <Pressable
                 key={item.value}
-                disabled={easyLocked}
                 onPress={() => setDifficulty(item.value)}
                 style={[styles.chip, selected && styles.chipSelected]}
               >
@@ -231,6 +236,8 @@ export function TaskManager() {
 
 const styles = StyleSheet.create({
   container: { padding: 20, paddingBottom: 80, gap: 14 },
+  notice: { backgroundColor: '#172033', borderRadius: 16, padding: 14 },
+  noticeText: { color: 'white', fontWeight: '800' },
   heading: { fontSize: 30, fontWeight: '800' },
   subheading: { opacity: 0.58, marginTop: -8 },
   card: { backgroundColor: 'white', borderRadius: 24, padding: 18, gap: 10, elevation: 2 },
