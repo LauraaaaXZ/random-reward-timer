@@ -12,4 +12,7 @@ export const GAME_CONFIG = {
   levelLockAfterInactiveDays: 7,
   exemptionExpiryDays: 14,
   exemptionWarningDays: 3,
+  holidayPass: {
+    coinCost: 120,
+  },
 } as const;
