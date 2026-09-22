@@ -8,8 +8,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Difficulty, Task } from '../domain/types';
-import { listDependencies, listTasks } from '../data/taskRepository';
+import { DailyPoolMode, Difficulty, Task } from '../domain/types';
+import { listTasks } from '../data/taskRepository';
 import { createTaskWithDependencies, markTaskCompleted } from '../services/taskService';
 
 const difficulties: { value: Difficulty; label: string }[] = [
@@ -19,17 +19,24 @@ const difficulties: { value: Difficulty; label: string }[] = [
   { value: 'super_difficult', label: 'Super Difficult' },
 ];
 
+const dailyModes: { value: DailyPoolMode; label: string }[] = [
+  { value: 'fragment', label: 'Fragment time' },
+  { value: 'easy_pool', label: 'Easy pool' },
+  { value: 'both', label: 'Both' },
+];
+
 export function TaskManager() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [name, setName] = useState('');
   const [minutes, setMinutes] = useState('30');
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [prerequisiteIds, setPrerequisiteIds] = useState<string[]>([]);
+  const [isDaily, setIsDaily] = useState(false);
+  const [dailyPoolMode, setDailyPoolMode] = useState<DailyPoolMode>('fragment');
   const [saving, setSaving] = useState(false);
 
   const reload = useCallback(async () => {
-    const nextTasks = await listTasks();
-    setTasks(nextTasks);
+    setTasks(await listTasks());
   }, []);
 
   useEffect(() => {
@@ -59,11 +66,14 @@ export function TaskManager() {
         estimatedMinutes: Math.round(parsedMinutes),
         difficulty,
         prerequisiteIds,
+        dailyPoolMode: isDaily ? dailyPoolMode : undefined,
       });
       setName('');
       setMinutes('30');
       setDifficulty('medium');
       setPrerequisiteIds([]);
+      setIsDaily(false);
+      setDailyPoolMode('fragment');
       await reload();
     } catch (error) {
       Alert.alert('Could not create task', error instanceof Error ? error.message : String(error));
@@ -92,14 +102,14 @@ export function TaskManager() {
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.heading}>Tasks</Text>
-      <Text style={styles.subheading}>Quick add with optional prerequisites.</Text>
+      <Text style={styles.subheading}>Quick add with daily tasks and prerequisites.</Text>
 
       <View style={styles.card}>
         <Text style={styles.label}>Task name</Text>
         <TextInput
           value={name}
           onChangeText={setName}
-          placeholder="e.g. Write analysis"
+          placeholder="e.g. Daily news reading"
           style={styles.input}
         />
 
@@ -111,19 +121,54 @@ export function TaskManager() {
           style={styles.input}
         />
 
+        <Text style={styles.label}>Task type</Text>
+        <View style={styles.wrap}>
+          <Pressable onPress={() => setIsDaily(false)} style={[styles.chip, !isDaily && styles.chipSelected]}>
+            <Text style={!isDaily ? styles.chipTextSelected : styles.chipText}>One-off</Text>
+          </Pressable>
+          <Pressable onPress={() => setIsDaily(true)} style={[styles.chip, isDaily && styles.chipSelected]}>
+            <Text style={isDaily ? styles.chipTextSelected : styles.chipText}>Daily</Text>
+          </Pressable>
+        </View>
+
+        {isDaily ? (
+          <>
+            <Text style={styles.label}>Daily pool</Text>
+            <View style={styles.wrap}>
+              {dailyModes.map((item) => (
+                <Pressable
+                  key={item.value}
+                  onPress={() => setDailyPoolMode(item.value)}
+                  style={[styles.chip, dailyPoolMode === item.value && styles.chipSelected]}
+                >
+                  <Text style={dailyPoolMode === item.value ? styles.chipTextSelected : styles.chipText}>
+                    {item.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <Text style={styles.helper}>
+              After you complete it today, it disappears from active draw pools until tomorrow.
+            </Text>
+          </>
+        ) : null}
+
         <Text style={styles.label}>Difficulty</Text>
         <View style={styles.wrap}>
-          {difficulties.map((item) => (
-            <Pressable
-              key={item.value}
-              onPress={() => setDifficulty(item.value)}
-              style={[styles.chip, difficulty === item.value && styles.chipSelected]}
-            >
-              <Text style={difficulty === item.value ? styles.chipTextSelected : styles.chipText}>
-                {item.label}
-              </Text>
-            </Pressable>
-          ))}
+          {difficulties.map((item) => {
+            const easyLocked = isDaily && (dailyPoolMode === 'easy_pool' || dailyPoolMode === 'both');
+            const selected = easyLocked ? item.value === 'easy' : difficulty === item.value;
+            return (
+              <Pressable
+                key={item.value}
+                disabled={easyLocked}
+                onPress={() => setDifficulty(item.value)}
+                style={[styles.chip, selected && styles.chipSelected]}
+              >
+                <Text style={selected ? styles.chipTextSelected : styles.chipText}>{item.label}</Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         <Text style={styles.label}>Prerequisite tasks</Text>
@@ -161,10 +206,15 @@ export function TaskManager() {
           <View key={task.id} style={styles.taskCard}>
             <View style={styles.taskHeader}>
               <View style={styles.taskTitleArea}>
-                <Text style={styles.taskName}>{task.status === 'locked' ? '🔒 ' : ''}{task.name}</Text>
-                <Text style={styles.taskMeta}>
-                  {task.estimatedMinutes} min · {task.difficulty.replace('_', ' ')} · {task.status}
+                <Text style={styles.taskName}>
+                  {task.status === 'locked' ? '🔒 ' : ''}{task.dailyPoolMode ? '↻ ' : ''}{task.name}
                 </Text>
+                <Text style={styles.taskMeta}>
+                  {task.estimatedMinutes} min · {task.difficulty.replace('_', ' ')} · {task.dailyPoolMode ? 'daily · ' + task.dailyPoolMode.replace('_', ' ') : task.status}
+                </Text>
+                {task.dailyPoolMode && task.dailyLastCompletedDate ? (
+                  <Text style={styles.dailyState}>Last completed: {task.dailyLastCompletedDate}</Text>
+                ) : null}
               </View>
               {task.status === 'active' ? (
                 <Pressable onPress={() => complete(task.id)} style={styles.completeButton}>
@@ -206,6 +256,7 @@ const styles = StyleSheet.create({
   prerequisiteSelected: { backgroundColor: '#246BFD' },
   chipText: { fontSize: 13, fontWeight: '700' },
   chipTextSelected: { fontSize: 13, fontWeight: '700', color: 'white' },
+  helper: { fontSize: 12, opacity: 0.5, lineHeight: 17 },
   muted: { opacity: 0.5 },
   primaryButton: {
     minHeight: 50,
@@ -222,6 +273,7 @@ const styles = StyleSheet.create({
   taskTitleArea: { flex: 1 },
   taskName: { fontSize: 16, fontWeight: '800' },
   taskMeta: { fontSize: 12, opacity: 0.55, marginTop: 4, textTransform: 'capitalize' },
+  dailyState: { fontSize: 11, opacity: 0.45, marginTop: 4 },
   completeButton: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, backgroundColor: '#E6F7ED' },
   completeText: { color: '#15743A', fontWeight: '800' },
 });
