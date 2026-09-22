@@ -1,45 +1,8 @@
 import { RewardPool } from './rewardPools';
-
-export type PrizeReward =
- | { type:'coin'; amount:number; label:string }
- | { type:'annual_leave_minutes'; minutes:number; label:string }
- | { type:'freedom_credit'; quantity:number; label:string }
- | { type:'weekly_boost'; boost:'discount'|'limit_plus_one'; discountRate?:number; label:string };
-
-export type UltimateChoice =
- | { category:'time'; type:'annual_leave_minutes'; minutes:number; label:string }
- | { category:'resource'; type:'coin'; amount:number; label:string }
- | { category:'freedom'; type:'freedom_credit'; quantity:number; label:string };
-
+export type PrizeReward={type:'coin';amount:number;label:string}|{type:'annual_leave_minutes';minutes:number;label:string}|{type:'freedom_credit';quantity:number;label:string}|{type:'weekly_boost';boost:'discount'|'limit_plus_one';discountRate?:number;label:string};
+export type UltimateChoice={category:'time';type:'annual_leave_minutes';minutes:number;label:string}|{category:'resource';type:'coin';amount:number;label:string}|{category:'freedom';type:'freedom_credit';quantity:number;label:string};
 type WeightedPrize={weight:number;reward:PrizeReward;workBoost?:boolean};
-
-export const TIME_PRIZE_POOL:readonly WeightedPrize[]=[
- {weight:38,reward:{type:'annual_leave_minutes',minutes:15,label:'+15 min Annual Leave'}},
- {weight:30,reward:{type:'annual_leave_minutes',minutes:30,label:'+30 min Annual Leave'}},
- {weight:18,reward:{type:'annual_leave_minutes',minutes:60,label:'+60 min Annual Leave'}},
- {weight:8,reward:{type:'annual_leave_minutes',minutes:90,label:'+90 min Annual Leave'}},
- {weight:3,reward:{type:'annual_leave_minutes',minutes:120,label:'+120 min Annual Leave'}},
-];
-
-export const FUNCTION_PRIZE_POOL:readonly WeightedPrize[]=[
- {weight:44,reward:{type:'coin',amount:20,label:'+20 Coin'}},
- {weight:30,reward:{type:'coin',amount:40,label:'+40 Coin'}},
- {weight:8,reward:{type:'freedom_credit',quantity:1,label:'+1 Freedom Credit'}},
- {weight:3,workBoost:true,reward:{type:'weekly_boost',boost:'discount',discountRate:.25,label:'25% Off Coupon · 7 days'}},
- {weight:1.5,workBoost:true,reward:{type:'weekly_boost',boost:'limit_plus_one',label:'Purchase Limit +1 Coupon · 7 days'}},
-];
-
-export const ULTIMATE_CHOICES:readonly UltimateChoice[]=[
- {category:'time',type:'annual_leave_minutes',minutes:480,label:'+1 Permanent Annual Leave Day'},
- {category:'resource',type:'coin',amount:500,label:'+500 Coin'},
- {category:'freedom',type:'freedom_credit',quantity:1,label:'+1 Freedom Credit'},
-];
-
-export function drawPrize(pool:RewardPool,random=Math.random,weeklyWorkMinutes=0):PrizeReward{
- const source=pool==='time'?TIME_PRIZE_POOL:FUNCTION_PRIZE_POOL;
- const workMultiplier=Math.min(3,1+Math.max(0,weeklyWorkMinutes)/300*.25);
- const weighted=source.map(i=>({item:i,w:i.weight*(i.workBoost?workMultiplier:1)}));
- const total=weighted.reduce((s,i)=>s+i.w,0);let cursor=random()*total;
- for(const entry of weighted){cursor-=entry.w;if(cursor<0)return entry.item.reward;}
- return weighted[weighted.length-1].item.reward;
-}
+export const TIME_PRIZE_POOL:readonly WeightedPrize[]=[{weight:38,reward:{type:'annual_leave_minutes',minutes:15,label:'+15 min Annual Leave'}},{weight:30,reward:{type:'annual_leave_minutes',minutes:30,label:'+30 min Annual Leave'}},{weight:18,reward:{type:'annual_leave_minutes',minutes:60,label:'+60 min Annual Leave'}},{weight:8,reward:{type:'annual_leave_minutes',minutes:90,label:'+90 min Annual Leave'}},{weight:3,reward:{type:'annual_leave_minutes',minutes:120,label:'+120 min Annual Leave'}}];
+export const FUNCTION_PRIZE_POOL:readonly WeightedPrize[]=[{weight:44,reward:{type:'coin',amount:20,label:'+20 Coin'}},{weight:30,reward:{type:'coin',amount:40,label:'+40 Coin'}},{weight:8,reward:{type:'freedom_credit',quantity:1,label:'+1 Freedom Credit'}},{weight:3,workBoost:true,reward:{type:'weekly_boost',boost:'discount',discountRate:.25,label:'25% Off Coupon · 7 days'}},{weight:1.5,workBoost:true,reward:{type:'weekly_boost',boost:'limit_plus_one',label:'Purchase Limit +1 Coupon · 7 days'}}];
+export const ULTIMATE_CHOICES:readonly UltimateChoice[]=[{category:'time',type:'annual_leave_minutes',minutes:480,label:'+1 Permanent Annual Leave Day'},{category:'resource',type:'coin',amount:500,label:'+500 Coin'},{category:'freedom',type:'freedom_credit',quantity:1,label:'+1 Freedom Credit'}];
+export function drawPrize(pool:RewardPool,random=Math.random,weeklyWorkMinutes=0):PrizeReward{const source=pool==='time'?TIME_PRIZE_POOL:FUNCTION_PRIZE_POOL;const workMultiplier=Math.min(3,1+Math.max(0,weeklyWorkMinutes)/300*.25);const weighted=source.map(i=>({item:i,w:i.weight*(i.workBoost?workMultiplier:1)}));const total=weighted.reduce((s,i)=>s+i.w,0);let cursor=random()*total;for(const entry of weighted){cursor-=entry.w;if(cursor<0)return entry.item.reward;}const fallback=weighted.at(-1);if(!fallback)throw new Error('Prize pool is empty.');return fallback.item.reward;}
