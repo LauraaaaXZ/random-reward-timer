@@ -72,6 +72,18 @@ export async function migrateDatabase() {
       CHECK (end_at > start_at)
     );
 
+    CREATE TABLE IF NOT EXISTS inventory (
+      resource_key TEXT PRIMARY KEY NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS holiday_days (
+      local_date TEXT PRIMARY KEY NOT NULL,
+      source TEXT NOT NULL CHECK (source IN ('pass','draw','grant')),
+      created_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS wallet (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       coin INTEGER NOT NULL DEFAULT 0,
@@ -93,6 +105,9 @@ export async function migrateDatabase() {
 
     INSERT OR IGNORE INTO wallet (id, coin, xp, level, updated_at)
     VALUES (1, 0, 0, 1, datetime('now'));
+
+    INSERT OR IGNORE INTO inventory (resource_key, quantity, updated_at)
+    VALUES ('holiday_pass', 0, datetime('now'));
 
     CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
     CREATE INDEX IF NOT EXISTS idx_tasks_deadline ON tasks(deadline_at);
