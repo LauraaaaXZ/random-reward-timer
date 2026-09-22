@@ -35,3 +35,19 @@ export interface FocusSession {
   startedAt?: string;
   endedAt?: string;
 }
+
+export type CalendarBlockKind = 'calendar' | 'sleep' | 'meal' | 'dnd' | 'recovery';
+
+export interface CalendarBlock {
+  id: string;
+  title: string;
+  startAt: string;
+  endAt: string;
+  kind: CalendarBlockKind;
+}
+
+export interface FreeWindow {
+  startAt: string;
+  endAt: string;
+  durationMinutes: number;
+}
