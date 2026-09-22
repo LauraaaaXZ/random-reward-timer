@@ -11,14 +11,10 @@ export const GAME_CONFIG = {
   preferred: { maxTasks: 3, maxMinutes: 300 },
   levelLockAfterInactiveDays: 7,
   annualLeaveMinutesPerDay: 480,
-  annualLeavePurchase: {
-    unitMinutes: 60,
-    baseCoinCost: 100,
-    priceGrowth: 1.25,
-  },
-  holidayPass: {
-    weeklyGrant: 1,
-    extensionCoinCost: 60,
-    maxExtensionWeeks: 1,
+  annualLeavePurchase: { unitMinutes: 60, baseCoinCost: 100, priceGrowth: 1.25 },
+  holidayPass: { weeklyGrant: 1, extensionCoinCost: 60, maxExtensionWeeks: 1 },
+  weeklyRoutine: {
+    shopping: { weeklyCredits: 3, weeklyMinutesCap: 360, extraCreditCoinCost: 40 },
+    outdoor: { previousWeekWorkRatio: 0.5 },
   },
 } as const;
