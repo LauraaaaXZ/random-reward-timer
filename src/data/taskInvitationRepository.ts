@@ -1,0 +1,88 @@
+import { getDatabase } from './database';
+import { GAME_CONFIG } from '../config/gameConfig';
+import { FreeWindow, Task } from '../domain/types';
+import { randomUUID } from '../utils/id';
+
+export type TaskInvitation={
+  id:string;
+  localDate:string;
+  taskId:string;
+  taskName:string;
+  inviteAt:string;
+  expiresAt:string;
+  status:'pending'|'accepted'|'dismissed'|'expired';
+};
+
+async function ensureTable(){
+  const db=await getDatabase();
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS task_invitations (
+      id TEXT PRIMARY KEY NOT NULL,
+      local_date TEXT NOT NULL,
+      task_id TEXT NOT NULL,
+      task_name TEXT NOT NULL,
+      invite_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('pending','accepted','dismissed','expired')),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_task_invitation_date ON task_invitations(local_date,invite_at);
+  `);
+}
+
+function randomInviteTime(window:FreeWindow,random=Math.random){
+  const cfg=GAME_CONFIG.taskInvitation;
+  const start=new Date(window.startAt).getTime()+cfg.edgeBufferMinutes*60000;
+  const end=new Date(window.endAt).getTime()-cfg.edgeBufferMinutes*60000;
+  if(end<=start)return null;
+  return new Date(start+random()*(end-start));
+}
+
+export async function ensureDailyInvitations(localDate:string,windows:FreeWindow[],tasks:Task[],random=Math.random){
+  await ensureTable();
+  const db=await getDatabase();
+  const existing=await db.getFirstAsync<{n:number}>('SELECT COUNT(*) AS n FROM task_invitations WHERE local_date=?',localDate);
+  if((existing?.n??0)>0)return;
+  const cfg=GAME_CONFIG.taskInvitation;
+  if(random()>cfg.dailyChance)return;
+
+  const candidateWindows=windows.filter(w=>w.durationMinutes>=cfg.minimumWindowMinutes);
+  const candidateTasks=tasks.filter(t=>t.status==='active'&&t.remainingMinutes>0);
+  if(!candidateWindows.length||!candidateTasks.length)return;
+
+  const inviteCount=random()<cfg.secondInviteChance?2:1;
+  const usedTasks=new Set<string>();
+  for(let i=0;i<inviteCount;i+=1){
+    const window=candidateWindows[Math.floor(random()*candidateWindows.length)];
+    if(!window)continue;
+    const available=candidateTasks.filter(t=>!usedTasks.has(t.id));
+    const task=available[Math.floor(random()*available.length)]??candidateTasks[Math.floor(random()*candidateTasks.length)];
+    if(!task)continue;
+    const inviteAt=randomInviteTime(window,random);
+    if(!inviteAt)continue;
+    usedTasks.add(task.id);
+    const expiresAt=new Date(Math.min(new Date(window.endAt).getTime(),inviteAt.getTime()+cfg.visibleForMinutes*60000));
+    await db.runAsync(
+      'INSERT INTO task_invitations (id,local_date,task_id,task_name,invite_at,expires_at,status,created_at) VALUES (?,?,?,?,?,?,?,?)',
+      randomUUID(),localDate,task.id,task.name,inviteAt.toISOString(),expiresAt.toISOString(),'pending',new Date().toISOString(),
+    );
+  }
+}
+
+export async function getActiveInvitation(now=new Date()):Promise<TaskInvitation|null>{
+  await ensureTable();
+  const db=await getDatabase();
+  const nowIso=now.toISOString();
+  await db.runAsync("UPDATE task_invitations SET status='expired' WHERE status='pending' AND expires_at<=?",nowIso);
+  const row=await db.getFirstAsync<any>(
+    "SELECT id,local_date,task_id,task_name,invite_at,expires_at,status FROM task_invitations WHERE status='pending' AND invite_at<=? AND expires_at>? ORDER BY invite_at LIMIT 1",
+    nowIso,nowIso,
+  );
+  return row?{id:row.id,localDate:row.local_date,taskId:row.task_id,taskName:row.task_name,inviteAt:row.invite_at,expiresAt:row.expires_at,status:row.status}:null;
+}
+
+export async function setInvitationStatus(id:string,status:'accepted'|'dismissed'){
+  await ensureTable();
+  const db=await getDatabase();
+  await db.runAsync('UPDATE task_invitations SET status=? WHERE id=?',status,id);
+}
