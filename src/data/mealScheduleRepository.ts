@@ -1,32 +1,11 @@
 import { getDatabase } from './database';
 import { randomUUID } from '../utils/id';
 
-export type MealSchedule={id:string;label:string;startTime:string;durationMinutes:60;active:boolean;createdAt:string};
-
-function validateTime(value:string){
-  if(!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value))throw new Error('Use HH:MM.');
-}
-export async function listMealSchedules():Promise<MealSchedule[]>{
-  const db=await getDatabase();
-  const rows=await db.getAllAsync<{id:string;label:string;start_time:string;duration_minutes:number;active:number;created_at:string}>(
-    'SELECT id,label,start_time,duration_minutes,active,created_at FROM meal_schedules WHERE active=1 ORDER BY start_time'
-  );
-  return rows.map(r=>({id:r.id,label:r.label,startTime:r.start_time,durationMinutes:60,active:Boolean(r.active),createdAt:r.created_at}));
-}
-export async function createMealSchedule(label:string,startTime:string){
-  validateTime(startTime);
-  const name=label.trim()||'Meal';
-  const db=await getDatabase();
-  const count=await db.getFirstAsync<{n:number}>('SELECT COUNT(*) AS n FROM meal_schedules WHERE active=1');
-  if((count?.n??0)>=4)throw new Error('Maximum 4 active meal blocks per day.');
-  const id=randomUUID();
-  await db.runAsync(
-    'INSERT INTO meal_schedules (id,label,start_time,duration_minutes,active,created_at) VALUES (?,?,?,60,1,?)',
-    id,name,startTime,new Date().toISOString()
-  );
-  return id;
-}
-export async function archiveMealSchedule(id:string){
-  const db=await getDatabase();
-  await db.runAsync('UPDATE meal_schedules SET active=0 WHERE id=?',id);
-}
+export type MealSchedule={id:string;localDate:string;label:string;startTime:string;startAt:string;endAt:string;durationMinutes:60;active:true;createdAt:string};
+type Row={id:string;local_date:string;label:string;start_at:string;end_at:string;created_at:string};
+function validateTime(value:string){if(!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value))throw new Error('Use HH:MM.');}
+function validateDate(value:string){if(!/^\d{4}-\d{2}-\d{2}$/.test(value))throw new Error('Use YYYY-MM-DD.');}
+function map(r:Row):MealSchedule{return{id:r.id,localDate:r.local_date,label:r.label,startTime:new Date(r.start_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false}),startAt:r.start_at,endAt:r.end_at,durationMinutes:60,active:true,createdAt:r.created_at}}
+export async function listMealSchedules(localDate?:string):Promise<MealSchedule[]>{const db=await getDatabase();const rows=localDate?await db.getAllAsync<Row>('SELECT id,local_date,label,start_at,end_at,created_at FROM meal_blocks WHERE local_date=? ORDER BY start_at',localDate):await db.getAllAsync<Row>('SELECT id,local_date,label,start_at,end_at,created_at FROM meal_blocks ORDER BY start_at');return rows.map(map)}
+export async function createMealSchedule(label:string,startTime:string,localDate:string){validateTime(startTime);validateDate(localDate);const name=label.trim()||'Meal',start=new Date(`${localDate}T${startTime}:00`),end=new Date(start.getTime()+3600000);if(!Number.isFinite(start.getTime()))throw new Error('Invalid meal time.');const db=await getDatabase();const count=await db.getFirstAsync<{n:number}>('SELECT COUNT(*) AS n FROM meal_blocks WHERE local_date=?',localDate);if((count?.n??0)>=4)throw new Error('Maximum 4 meal blocks for this day.');const conflict=await db.getFirstAsync<{title:string}>('SELECT title FROM calendar_blocks WHERE end_at > ? AND start_at < ? LIMIT 1',start.toISOString(),end.toISOString())??await db.getFirstAsync<{title:string}>('SELECT title FROM external_calendar_events WHERE end_at > ? AND start_at < ? LIMIT 1',start.toISOString(),end.toISOString());const mealConflict=await db.getFirstAsync<{label:string}>('SELECT label FROM meal_blocks WHERE end_at > ? AND start_at < ? LIMIT 1',start.toISOString(),end.toISOString());if(conflict||mealConflict)throw new Error(`TIME_CONFLICT:${conflict?.title??mealConflict?.label??'existing block'}`);const id=randomUUID(),createdAt=new Date().toISOString();await db.runAsync('INSERT INTO meal_blocks (id,local_date,label,start_at,end_at,created_at) VALUES (?,?,?,?,?,?)',id,localDate,name,start.toISOString(),end.toISOString(),createdAt);return id}
+export async function archiveMealSchedule(id:string){const db=await getDatabase();await db.runAsync('DELETE FROM meal_blocks WHERE id=?',id)}
