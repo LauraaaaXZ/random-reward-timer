@@ -10,6 +10,7 @@ export async function migrateDatabase() {
     CREATE TABLE IF NOT EXISTS scheduled_routines (id TEXT PRIMARY KEY NOT NULL,name TEXT NOT NULL,target_time TEXT NOT NULL,window_start TEXT NOT NULL,window_end TEXT NOT NULL,repeat_mode TEXT NOT NULL DEFAULT 'daily' CHECK (repeat_mode IN ('daily')),active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS routine_completions (routine_id TEXT NOT NULL,local_date TEXT NOT NULL,completed_at TEXT NOT NULL,PRIMARY KEY (routine_id,local_date),FOREIGN KEY (routine_id) REFERENCES scheduled_routines(id) ON DELETE CASCADE);
     CREATE TABLE IF NOT EXISTS meal_schedules (id TEXT PRIMARY KEY NOT NULL,label TEXT NOT NULL,start_time TEXT NOT NULL,duration_minutes INTEGER NOT NULL DEFAULT 60 CHECK (duration_minutes = 60),active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS meal_blocks (id TEXT PRIMARY KEY NOT NULL,local_date TEXT NOT NULL,label TEXT NOT NULL,start_at TEXT NOT NULL,end_at TEXT NOT NULL,created_at TEXT NOT NULL,CHECK (end_at > start_at));
     CREATE TABLE IF NOT EXISTS sleep_schedules (id TEXT PRIMARY KEY NOT NULL,start_time TEXT NOT NULL,duration_minutes INTEGER NOT NULL DEFAULT 480 CHECK (duration_minutes = 480),active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS sleep_sessions (local_date TEXT PRIMARY KEY NOT NULL,actual_start_at TEXT NOT NULL,actual_end_at TEXT NOT NULL,confirmed_at TEXT NOT NULL,CHECK (actual_end_at > actual_start_at));
     CREATE TABLE IF NOT EXISTS focus_sessions (id TEXT PRIMARY KEY NOT NULL,task_id TEXT NOT NULL,pool TEXT NOT NULL,draw_mode TEXT NOT NULL,commitment_minutes INTEGER NOT NULL,actual_minutes INTEGER,started_at TEXT,ended_at TEXT,FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE);
@@ -37,6 +38,7 @@ export async function migrateDatabase() {
     CREATE INDEX IF NOT EXISTS idx_daily_rules_completed ON daily_task_rules(last_completed_local_date);
     CREATE INDEX IF NOT EXISTS idx_routine_active ON scheduled_routines(active);
     CREATE INDEX IF NOT EXISTS idx_meal_active ON meal_schedules(active,start_time);
+    CREATE INDEX IF NOT EXISTS idx_meal_blocks_date ON meal_blocks(local_date,start_at,end_at);
     CREATE INDEX IF NOT EXISTS idx_sleep_active ON sleep_schedules(active,start_time);
     CREATE INDEX IF NOT EXISTS idx_sleep_sessions_time ON sleep_sessions(actual_start_at,actual_end_at);
     CREATE INDEX IF NOT EXISTS idx_calendar_blocks_time ON calendar_blocks(start_at,end_at);
