@@ -17,7 +17,7 @@ export const GAME_CONFIG = {
     leisure: {
       weeklyCredits: 3,
       weeklyMinutesCap: 360,
-      purchase: { coinCost: 40, creditsAdded: 1, minutesAdded: 180, weeklyPurchaseLimit: 1 },
+      purchase: { coinCost: 100, creditsAdded: 1, minutesAdded: 180, weeklyPurchaseLimit: 1 },
     },
     outdoor: { previousWeekWorkRatio: 0.5 },
   },
