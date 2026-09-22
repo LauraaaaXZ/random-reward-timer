@@ -13,6 +13,11 @@ export const GAME_CONFIG = {
   annualLeaveMinutesPerDay: 480,
   annualLeavePurchase: { unitMinutes: 60, baseCoinCost: 100, priceGrowth: 1.25 },
   holidayPass: { weeklyGrant: 1, extensionCoinCost: 60, maxExtensionWeeks: 1 },
+  mandatoryRest: {
+    optionsMinutes: [5, 10, 15, 30] as const,
+    chooseCoinCost: 20,
+    nextDrawDelayOptionsMinutes: [0, 15, 30, 60] as const,
+  },
   weeklyRoutine: {
     leisure: {
       weeklyCredits: 3,
