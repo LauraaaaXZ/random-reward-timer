@@ -25,10 +25,17 @@ export async function startSession(input: {
 
 export async function finishSession(sessionId: string, actualMinutes: number) {
   const db = await getDatabase();
+  const existing = await db.getFirstAsync<{ ended_at: string | null }>(
+    'SELECT ended_at FROM focus_sessions WHERE id = ?',
+    sessionId,
+  );
+  if (!existing) throw new Error('Focus session was not found.');
+  if (existing.ended_at) return false;
   await db.runAsync(
-    'UPDATE focus_sessions SET actual_minutes = ?, ended_at = ? WHERE id = ?',
+    'UPDATE focus_sessions SET actual_minutes = ?, ended_at = ? WHERE id = ? AND ended_at IS NULL',
     actualMinutes,
     new Date().toISOString(),
     sessionId,
   );
+  return true;
 }
