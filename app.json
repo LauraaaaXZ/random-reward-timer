@@ -5,8 +5,12 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "plugins": [
+      ["expo-calendar", {"calendarPermission": "Allow Random Reward Timer to read selected calendars for scheduling."}]
+    ],
     "android": {
-      "package": "com.randomrewardtimer.app"
+      "package": "com.randomrewardtimer.app",
+      "permissions": ["android.permission.READ_CALENDAR"]
     }
   }
 }
