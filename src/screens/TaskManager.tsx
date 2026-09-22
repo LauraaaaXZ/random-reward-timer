@@ -1,338 +1,60 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { DailyPoolMode, Difficulty, Task } from '../domain/types';
 import { listTasks } from '../data/taskRepository';
 import { createTaskWithDependencies, markTaskCompleted } from '../services/taskService';
 import { createScheduledRoutine, listScheduledRoutines, ScheduledRoutine } from '../data/scheduledRoutineRepository';
 
 const difficulties: { value: Difficulty; label: string }[] = [
-  { value: 'easy', label: 'Easy' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'hard', label: 'Hard' },
-  { value: 'super_difficult', label: 'Super Difficult' },
+  { value: 'easy', label: 'Easy' }, { value: 'medium', label: 'Medium' },
+  { value: 'hard', label: 'Hard' }, { value: 'super_difficult', label: 'Super Difficult' },
 ];
-
 const dailyModes: { value: DailyPoolMode; label: string }[] = [
-  { value: 'fragment', label: 'Fragment time' },
-  { value: 'easy_pool', label: 'Main draw pool' },
-  { value: 'both', label: 'Both' },
+  { value: 'fragment', label: 'Fragment time' }, { value: 'easy_pool', label: 'Main draw pool' }, { value: 'both', label: 'Both' },
 ];
 
 export function TaskManager() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [name, setName] = useState('');
-  const [minutes, setMinutes] = useState('30');
-  const [difficulty, setDifficulty] = useState<Difficulty>('medium');
-  const [prerequisiteIds, setPrerequisiteIds] = useState<string[]>([]);
-  const [isDaily, setIsDaily] = useState(false);
-  const [dailyPoolMode, setDailyPoolMode] = useState<DailyPoolMode>('fragment');
-  const [saving, setSaving] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [routines, setRoutines] = useState<ScheduledRoutine[]>([]);
-  const [routineName, setRoutineName] = useState('');
-  const [routineTarget, setRoutineTarget] = useState('23:00');
-  const [routineStart, setRoutineStart] = useState('22:00');
-  const [routineEnd, setRoutineEnd] = useState('23:30');
-
-  const reload = useCallback(async () => {
-    const [taskRows, routineRows] = await Promise.all([listTasks(), listScheduledRoutines()]);
-    setTasks(taskRows);
-    setRoutines(routineRows);
-  }, []);
-
-  useEffect(() => {
-    reload().catch((error) => Alert.alert('Could not load tasks', String(error)));
-  }, [reload]);
-
-  const candidates = useMemo(
-    () => tasks.filter((task) => task.status !== 'completed' && task.status !== 'archived'),
-    [tasks],
-  );
-
-  async function addTask() {
-    const parsedMinutes = Number(minutes);
-    if (!name.trim()) {
-      Alert.alert('Task name required');
-      return;
-    }
-    if (!Number.isFinite(parsedMinutes) || parsedMinutes <= 0) {
-      Alert.alert('Estimated time must be greater than 0');
-      return;
-    }
-
-    try {
-      setSaving(true);
-      await createTaskWithDependencies({
-        name,
-        estimatedMinutes: Math.round(parsedMinutes),
-        difficulty,
-        prerequisiteIds,
-        dailyPoolMode: isDaily ? dailyPoolMode : undefined,
-      });
-      setName('');
-      setMinutes('30');
-      setDifficulty('medium');
-      setPrerequisiteIds([]);
-      setIsDaily(false);
-      setDailyPoolMode('fragment');
-      await reload();
-      setNotice(`✓ New task confirmed · ${name.trim()} · ${Math.round(parsedMinutes)} min`);
-      setTimeout(() => setNotice(null), 4000);
-    } catch (error) {
-      Alert.alert('Could not create task', error instanceof Error ? error.message : String(error));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function complete(taskId: string) {
-    try {
-      const completedTask = tasks.find((task) => task.id === taskId);
-      await markTaskCompleted(taskId);
-      await reload();
-      setNotice(`✓ Task completed · ${completedTask?.name ?? 'Task'}`);
-      setTimeout(() => setNotice(null), 4000);
-    } catch (error) {
-      Alert.alert('Could not complete task', error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  async function addRoutine() {
-    try {
-      setSaving(true);
-      await createScheduledRoutine({
-        name: routineName,
-        targetTime: routineTarget,
-        windowStart: routineStart,
-        windowEnd: routineEnd,
-      });
-      const confirmedName = routineName.trim();
-      setRoutineName('');
-      await reload();
-      setNotice(`✓ Routine confirmed · ${confirmedName} · target ${routineTarget}`);
-      setTimeout(() => setNotice(null), 4000);
-    } catch (error) {
-      Alert.alert('Could not create routine', error instanceof Error ? error.message : String(error));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function togglePrerequisite(taskId: string) {
-    setPrerequisiteIds((current) =>
-      current.includes(taskId)
-        ? current.filter((id) => id !== taskId)
-        : [...current, taskId],
-    );
-  }
-
-  return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      {notice ? <View style={styles.notice}><Text style={styles.noticeText}>{notice}</Text></View> : null}
-      <Text style={styles.heading}>Tasks</Text>
-      <Text style={styles.subheading}>Quick add with daily tasks and prerequisites.</Text>
-
-      <View style={styles.card}>
-        <Text style={styles.label}>Task name</Text>
-        <TextInput
-          value={name}
-          onChangeText={setName}
-          placeholder="e.g. Daily news reading"
-          style={styles.input}
-        />
-
-        <Text style={styles.label}>Estimated minutes</Text>
-        <TextInput
-          value={minutes}
-          onChangeText={setMinutes}
-          keyboardType="number-pad"
-          style={styles.input}
-        />
-
-        <Text style={styles.label}>Task type</Text>
-        <View style={styles.wrap}>
-          <Pressable onPress={() => setIsDaily(false)} style={[styles.chip, !isDaily && styles.chipSelected]}>
-            <Text style={!isDaily ? styles.chipTextSelected : styles.chipText}>One-off</Text>
-          </Pressable>
-          <Pressable onPress={() => setIsDaily(true)} style={[styles.chip, isDaily && styles.chipSelected]}>
-            <Text style={isDaily ? styles.chipTextSelected : styles.chipText}>Daily</Text>
-          </Pressable>
-        </View>
-
-        {isDaily ? (
-          <>
-            <Text style={styles.label}>Daily pool</Text>
-            <View style={styles.wrap}>
-              {dailyModes.map((item) => (
-                <Pressable
-                  key={item.value}
-                  onPress={() => setDailyPoolMode(item.value)}
-                  style={[styles.chip, dailyPoolMode === item.value && styles.chipSelected]}
-                >
-                  <Text style={dailyPoolMode === item.value ? styles.chipTextSelected : styles.chipText}>
-                    {item.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            <Text style={styles.helper}>
-              After you complete it today, it disappears from active draw pools until tomorrow.
-            </Text>
-          </>
-        ) : null}
-
-        <Text style={styles.label}>Difficulty</Text>
-        <View style={styles.wrap}>
-          {difficulties.map((item) => {
-            const selected = difficulty === item.value;
-            return (
-              <Pressable
-                key={item.value}
-                onPress={() => setDifficulty(item.value)}
-                style={[styles.chip, selected && styles.chipSelected]}
-              >
-                <Text style={selected ? styles.chipTextSelected : styles.chipText}>{item.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <Text style={styles.label}>Prerequisite tasks</Text>
-        {candidates.length === 0 ? (
-          <Text style={styles.muted}>No existing tasks yet.</Text>
-        ) : (
-          <View style={styles.wrap}>
-            {candidates.map((task) => {
-              const selected = prerequisiteIds.includes(task.id);
-              return (
-                <Pressable
-                  key={task.id}
-                  onPress={() => togglePrerequisite(task.id)}
-                  style={[styles.prerequisite, selected && styles.prerequisiteSelected]}
-                >
-                  <Text numberOfLines={1} style={selected ? styles.chipTextSelected : styles.chipText}>
-                    {selected ? '✓ ' : ''}{task.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
-
-        <Pressable disabled={saving} onPress={addTask} style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>{saving ? 'Saving…' : 'Add task'}</Text>
-        </Pressable>
+  const [tasks,setTasks]=useState<Task[]>([]),[name,setName]=useState(''),[minutes,setMinutes]=useState('30');
+  const [difficulty,setDifficulty]=useState<Difficulty>('medium'),[prerequisiteIds,setPrerequisiteIds]=useState<string[]>([]);
+  const [isDaily,setIsDaily]=useState(false),[dailyPoolMode,setDailyPoolMode]=useState<DailyPoolMode>('fragment');
+  const [saving,setSaving]=useState(false),[notice,setNotice]=useState<string|null>(null),[routines,setRoutines]=useState<ScheduledRoutine[]>([]);
+  const [routineName,setRoutineName]=useState(''),[routineTarget,setRoutineTarget]=useState('23:00'),[routineStart,setRoutineStart]=useState('22:00'),[routineEnd,setRoutineEnd]=useState('23:30');
+  const [entryMode,setEntryMode]=useState<'random'|'scheduled'>('random');
+  const reload=useCallback(async()=>{const[t,r]=await Promise.all([listTasks(),listScheduledRoutines()]);setTasks(t);setRoutines(r)},[]);
+  useEffect(()=>{reload().catch(e=>Alert.alert('Could not load tasks',String(e)))},[reload]);
+  const currentTasks=useMemo(()=>tasks.filter(t=>t.status!=='completed'&&t.status!=='archived'),[tasks]);
+  const candidates=currentTasks;
+  async function addTask(){const parsed=Number(minutes);if(!name.trim())return Alert.alert('Task name required');if(!Number.isFinite(parsed)||parsed<=0)return Alert.alert('Estimated time must be greater than 0');try{setSaving(true);await createTaskWithDependencies({name,estimatedMinutes:Math.round(parsed),difficulty,prerequisiteIds,dailyPoolMode:isDaily?dailyPoolMode:undefined});const confirmed=name.trim();setName('');setMinutes('30');setDifficulty('medium');setPrerequisiteIds([]);setIsDaily(false);setDailyPoolMode('fragment');await reload();setNotice(`✓ New task confirmed · ${confirmed} · ${Math.round(parsed)} min`);setTimeout(()=>setNotice(null),4000)}catch(e){Alert.alert('Could not create task',e instanceof Error?e.message:String(e))}finally{setSaving(false)}}
+  async function complete(id:string){try{const t=tasks.find(x=>x.id===id);await markTaskCompleted(id);await reload();setNotice(`✓ Task completed · ${t?.name??'Task'}`);setTimeout(()=>setNotice(null),4000)}catch(e){Alert.alert('Could not complete task',e instanceof Error?e.message:String(e))}}
+  async function addRoutine(){try{setSaving(true);await createScheduledRoutine({name:routineName,targetTime:routineTarget,windowStart:routineStart,windowEnd:routineEnd});const confirmed=routineName.trim();setRoutineName('');await reload();setNotice(`✓ Routine confirmed · ${confirmed} · target ${routineTarget}`);setTimeout(()=>setNotice(null),4000)}catch(e){Alert.alert('Could not create routine',e instanceof Error?e.message:String(e))}finally{setSaving(false)}}
+  function togglePrerequisite(id:string){setPrerequisiteIds(c=>c.includes(id)?c.filter(x=>x!==id):[...c,id])}
+  return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    {notice?<View style={styles.notice}><Text style={styles.noticeText}>{notice}</Text></View>:null}
+    <Text style={styles.heading}>Tasks</Text><Text style={styles.subheading}>Random tasks and scheduled routines in one workspace.</Text>
+    <View style={styles.card}>
+      <Text style={styles.label}>Add</Text><View style={styles.wrap}>
+        <Pressable onPress={()=>setEntryMode('random')} style={[styles.chip,entryMode==='random'&&styles.chipSelected]}><Text style={entryMode==='random'?styles.chipTextSelected:styles.chipText}>Random task</Text></Pressable>
+        <Pressable onPress={()=>setEntryMode('scheduled')} style={[styles.chip,entryMode==='scheduled'&&styles.chipSelected]}><Text style={entryMode==='scheduled'?styles.chipTextSelected:styles.chipText}>Scheduled routine</Text></Pressable>
       </View>
-
-      <Text style={styles.sectionTitle}>Scheduled routines</Text>
-      <View style={styles.card}>
-        <Text style={styles.helper}>Use this for early sleep, wake-up, exercise, or other time-window routines. Routines do not enter random task draws.</Text>
-        <Text style={styles.label}>Routine name</Text>
-        <TextInput value={routineName} onChangeText={setRoutineName} placeholder="e.g. Early sleep" style={styles.input}/>
-        <Text style={styles.label}>Target time</Text>
-        <TextInput value={routineTarget} onChangeText={setRoutineTarget} placeholder="23:00" style={styles.input}/>
-        <Text style={styles.label}>Completion window</Text>
-        <View style={styles.timeRow}>
-          <TextInput value={routineStart} onChangeText={setRoutineStart} placeholder="22:00" style={[styles.input,styles.timeInput]}/>
-          <Text style={styles.timeDash}>to</Text>
-          <TextInput value={routineEnd} onChangeText={setRoutineEnd} placeholder="23:30" style={[styles.input,styles.timeInput]}/>
-        </View>
-        <Pressable disabled={saving} onPress={addRoutine} style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>{saving ? 'Saving…' : 'Add routine'}</Text>
-        </Pressable>
-        {routines.map(r=><View key={r.id} style={styles.routineRow}><View><Text style={styles.taskName}>{r.name}</Text><Text style={styles.taskMeta}>{r.windowStart}–{r.windowEnd} · target {r.targetTime} · daily</Text></View></View>)}
-      </View>
-
-      <Text style={styles.sectionTitle}>Current tasks</Text>
-      {tasks.length === 0 ? (
-        <Text style={styles.muted}>Create your first task above.</Text>
-      ) : (
-        tasks.map((task) => (
-          <View key={task.id} style={styles.taskCard}>
-            <View style={styles.taskHeader}>
-              <View style={styles.taskTitleArea}>
-                <Text style={styles.taskName}>
-                  {task.status === 'locked' ? '🔒 ' : ''}{task.dailyPoolMode ? '↻ ' : ''}{task.name}
-                </Text>
-                <Text style={styles.taskMeta}>
-                  {task.estimatedMinutes} min · {task.difficulty.replace('_', ' ')} · {task.dailyPoolMode ? 'daily · ' + task.dailyPoolMode.replace('_', ' ') : task.status}
-                </Text>
-                {task.dailyPoolMode && task.dailyLastCompletedDate ? (
-                  <Text style={styles.dailyState}>Last completed: {task.dailyLastCompletedDate}</Text>
-                ) : null}
-              </View>
-              {task.status === 'active' ? (
-                <Pressable onPress={() => complete(task.id)} style={styles.completeButton}>
-                  <Text style={styles.completeText}>Done</Text>
-                </Pressable>
-              ) : null}
-            </View>
-          </View>
-        ))
-      )}
-    </ScrollView>
-  );
+      {entryMode==='random'?<>
+        <Text style={styles.label}>Task name</Text><TextInput value={name} onChangeText={setName} placeholder="e.g. Daily news reading" style={styles.input}/>
+        <Text style={styles.label}>Estimated minutes</Text><TextInput value={minutes} onChangeText={setMinutes} keyboardType="number-pad" style={styles.input}/>
+        <Text style={styles.label}>Task type</Text><View style={styles.wrap}><Pressable onPress={()=>setIsDaily(false)} style={[styles.chip,!isDaily&&styles.chipSelected]}><Text style={!isDaily?styles.chipTextSelected:styles.chipText}>One-off</Text></Pressable><Pressable onPress={()=>setIsDaily(true)} style={[styles.chip,isDaily&&styles.chipSelected]}><Text style={isDaily?styles.chipTextSelected:styles.chipText}>Daily</Text></Pressable></View>
+        {isDaily?<><Text style={styles.label}>Daily pool</Text><View style={styles.wrap}>{dailyModes.map(i=><Pressable key={i.value} onPress={()=>setDailyPoolMode(i.value)} style={[styles.chip,dailyPoolMode===i.value&&styles.chipSelected]}><Text style={dailyPoolMode===i.value?styles.chipTextSelected:styles.chipText}>{i.label}</Text></Pressable>)}</View><Text style={styles.helper}>After completion today it leaves active draw pools until tomorrow.</Text></>:null}
+        <Text style={styles.label}>Difficulty</Text><View style={styles.wrap}>{difficulties.map(i=><Pressable key={i.value} onPress={()=>setDifficulty(i.value)} style={[styles.chip,difficulty===i.value&&styles.chipSelected]}><Text style={difficulty===i.value?styles.chipTextSelected:styles.chipText}>{i.label}</Text></Pressable>)}</View>
+        <Text style={styles.label}>Prerequisite tasks</Text>{candidates.length===0?<Text style={styles.muted}>No existing tasks yet.</Text>:<View style={styles.wrap}>{candidates.map(t=>{const selected=prerequisiteIds.includes(t.id);return <Pressable key={t.id} onPress={()=>togglePrerequisite(t.id)} style={[styles.prerequisite,selected&&styles.prerequisiteSelected]}><Text numberOfLines={1} style={selected?styles.chipTextSelected:styles.chipText}>{selected?'✓ ':''}{t.name}</Text></Pressable>})}</View>}
+        <Pressable disabled={saving} onPress={addTask} style={styles.primaryButton}><Text style={styles.primaryButtonText}>{saving?'Saving…':'Add task'}</Text></Pressable>
+      </>:<>
+        <Text style={styles.helper}>For early sleep, wake-up, exercise, or other time-window routines. These do not enter random draws.</Text>
+        <Text style={styles.label}>Routine name</Text><TextInput value={routineName} onChangeText={setRoutineName} placeholder="e.g. Early sleep" style={styles.input}/>
+        <Text style={styles.label}>Target time</Text><TextInput value={routineTarget} onChangeText={setRoutineTarget} placeholder="23:00" style={styles.input}/>
+        <Text style={styles.label}>Completion window</Text><View style={styles.timeRow}><TextInput value={routineStart} onChangeText={setRoutineStart} placeholder="22:00" style={[styles.input,styles.timeInput]}/><Text style={styles.timeDash}>to</Text><TextInput value={routineEnd} onChangeText={setRoutineEnd} placeholder="23:30" style={[styles.input,styles.timeInput]}/></View>
+        <Pressable disabled={saving} onPress={addRoutine} style={styles.primaryButton}><Text style={styles.primaryButtonText}>{saving?'Saving…':'Add routine'}</Text></Pressable>
+      </>}
+    </View>
+    <Text style={styles.sectionTitle}>Current tasks</Text>
+    {currentTasks.length===0?<Text style={styles.muted}>No active tasks.</Text>:currentTasks.map(t=><View key={t.id} style={styles.taskCard}><View style={styles.taskHeader}><View style={styles.taskTitleArea}><Text style={styles.taskName}>{t.status==='locked'?'🔒 ':''}{t.dailyPoolMode?'↻ ':''}{t.name}</Text><Text style={styles.taskMeta}>{t.estimatedMinutes} min · {t.difficulty.replace('_',' ')} · {t.dailyPoolMode?'daily · '+t.dailyPoolMode.replace('_',' '):t.status}</Text>{t.dailyPoolMode&&t.dailyLastCompletedDate?<Text style={styles.dailyState}>Last completed: {t.dailyLastCompletedDate}</Text>:null}</View>{t.status==='active'?<Pressable onPress={()=>complete(t.id)} style={styles.completeButton}><Text style={styles.completeText}>Done</Text></Pressable>:null}</View></View>)}
+    {routines.length>0?<><Text style={styles.sectionTitle}>Scheduled routines</Text><View style={styles.card}>{routines.map(r=><View key={r.id} style={styles.routineRow}><Text style={styles.taskName}>{r.name}</Text><Text style={styles.taskMeta}>{r.windowStart}–{r.windowEnd} · target {r.targetTime} · daily</Text></View>)}</View></>:null}
+  </ScrollView>
 }
-
-const styles = StyleSheet.create({
-  container: { padding: 20, paddingBottom: 80, gap: 14 },
-  notice: { backgroundColor: '#172033', borderRadius: 16, padding: 14 },
-  noticeText: { color: 'white', fontWeight: '800' },
-  heading: { fontSize: 30, fontWeight: '800' },
-  subheading: { opacity: 0.58, marginTop: -8 },
-  card: { backgroundColor: 'white', borderRadius: 24, padding: 18, gap: 10, elevation: 2 },
-  label: { fontSize: 12, fontWeight: '800', marginTop: 4, opacity: 0.72 },
-  input: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: '#E1E5EC',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    backgroundColor: '#FAFBFC',
-  },
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  timeInput: { flex: 1 },
-  timeDash: { opacity: 0.5 },
-  routineRow: { paddingTop: 10, marginTop: 4, borderTopWidth: 1, borderTopColor: '#EEF1F6' },
-  chip: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 999, backgroundColor: '#EEF1F6' },
-  chipSelected: { backgroundColor: '#246BFD' },
-  prerequisite: {
-    maxWidth: '100%',
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 12,
-    backgroundColor: '#EEF1F6',
-  },
-  prerequisiteSelected: { backgroundColor: '#246BFD' },
-  chipText: { fontSize: 13, fontWeight: '700' },
-  chipTextSelected: { fontSize: 13, fontWeight: '700', color: 'white' },
-  helper: { fontSize: 12, opacity: 0.5, lineHeight: 17 },
-  muted: { opacity: 0.5 },
-  primaryButton: {
-    minHeight: 50,
-    marginTop: 8,
-    borderRadius: 16,
-    backgroundColor: '#246BFD',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButtonText: { color: 'white', fontWeight: '800', fontSize: 16 },
-  sectionTitle: { fontSize: 19, fontWeight: '800', marginTop: 4 },
-  taskCard: { backgroundColor: 'white', borderRadius: 18, padding: 16, elevation: 1 },
-  taskHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  taskTitleArea: { flex: 1 },
-  taskName: { fontSize: 16, fontWeight: '800' },
-  taskMeta: { fontSize: 12, opacity: 0.55, marginTop: 4, textTransform: 'capitalize' },
-  dailyState: { fontSize: 11, opacity: 0.45, marginTop: 4 },
-  completeButton: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, backgroundColor: '#E6F7ED' },
-  completeText: { color: '#15743A', fontWeight: '800' },
-});
+const styles=StyleSheet.create({container:{padding:20,paddingBottom:80,gap:14},notice:{backgroundColor:'#172033',borderRadius:16,padding:14},noticeText:{color:'white',fontWeight:'800'},heading:{fontSize:30,fontWeight:'800'},subheading:{opacity:.58,marginTop:-8},card:{backgroundColor:'white',borderRadius:24,padding:18,gap:10,elevation:2},label:{fontSize:12,fontWeight:'800',marginTop:4,opacity:.72},input:{minHeight:48,borderWidth:1,borderColor:'#E1E5EC',borderRadius:14,paddingHorizontal:14,backgroundColor:'#FAFBFC'},wrap:{flexDirection:'row',flexWrap:'wrap',gap:8},timeRow:{flexDirection:'row',alignItems:'center',gap:8},timeInput:{flex:1},timeDash:{opacity:.5},routineRow:{paddingVertical:8,borderBottomWidth:1,borderBottomColor:'#EEF1F6'},chip:{paddingHorizontal:12,paddingVertical:9,borderRadius:999,backgroundColor:'#EEF1F6'},chipSelected:{backgroundColor:'#246BFD'},prerequisite:{maxWidth:'100%',paddingHorizontal:12,paddingVertical:9,borderRadius:12,backgroundColor:'#EEF1F6'},prerequisiteSelected:{backgroundColor:'#246BFD'},chipText:{fontSize:13,fontWeight:'700'},chipTextSelected:{fontSize:13,fontWeight:'700',color:'white'},helper:{fontSize:12,opacity:.5,lineHeight:17},muted:{opacity:.5},primaryButton:{minHeight:50,marginTop:8,borderRadius:16,backgroundColor:'#246BFD',alignItems:'center',justifyContent:'center'},primaryButtonText:{color:'white',fontWeight:'800',fontSize:16},sectionTitle:{fontSize:19,fontWeight:'800',marginTop:4},taskCard:{backgroundColor:'white',borderRadius:18,padding:16,elevation:1},taskHeader:{flexDirection:'row',alignItems:'center',gap:12},taskTitleArea:{flex:1},taskName:{fontSize:16,fontWeight:'800'},taskMeta:{fontSize:12,opacity:.55,marginTop:4,textTransform:'capitalize'},dailyState:{fontSize:11,opacity:.45,marginTop:4},completeButton:{paddingHorizontal:14,paddingVertical:9,borderRadius:12,backgroundColor:'#E6F7ED'},completeText:{color:'#15743A',fontWeight:'800'}});
