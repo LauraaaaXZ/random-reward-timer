@@ -10,6 +10,8 @@ export async function migrateDatabase() {
     CREATE TABLE IF NOT EXISTS scheduled_routines (id TEXT PRIMARY KEY NOT NULL,name TEXT NOT NULL,target_time TEXT NOT NULL,window_start TEXT NOT NULL,window_end TEXT NOT NULL,repeat_mode TEXT NOT NULL DEFAULT 'daily' CHECK (repeat_mode IN ('daily')),active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS routine_completions (routine_id TEXT NOT NULL,local_date TEXT NOT NULL,completed_at TEXT NOT NULL,PRIMARY KEY (routine_id,local_date),FOREIGN KEY (routine_id) REFERENCES scheduled_routines(id) ON DELETE CASCADE);
     CREATE TABLE IF NOT EXISTS focus_sessions (id TEXT PRIMARY KEY NOT NULL,task_id TEXT NOT NULL,pool TEXT NOT NULL,draw_mode TEXT NOT NULL,commitment_minutes INTEGER NOT NULL,actual_minutes INTEGER,started_at TEXT,ended_at TEXT,FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE);
+    CREATE TABLE IF NOT EXISTS focus_session_modes (session_id TEXT PRIMARY KEY NOT NULL,work_mode TEXT NOT NULL DEFAULT 'normal' CHECK (work_mode IN ('normal','low_intensity')),credit_ratio REAL NOT NULL DEFAULT 1 CHECK (credit_ratio > 0 AND credit_ratio <= 1),FOREIGN KEY (session_id) REFERENCES focus_sessions(id) ON DELETE CASCADE);
+    CREATE TABLE IF NOT EXISTS daily_work_settlements (local_date TEXT PRIMARY KEY NOT NULL,disposable_minutes INTEGER NOT NULL,minimum_minutes REAL NOT NULL,maximum_minutes REAL NOT NULL,credited_work_minutes REAL NOT NULL,shortfall_minutes REAL NOT NULL,leave_days_charged REAL NOT NULL DEFAULT 0,settled_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS calendar_blocks (id TEXT PRIMARY KEY NOT NULL,title TEXT NOT NULL,start_at TEXT NOT NULL,end_at TEXT NOT NULL,kind TEXT NOT NULL CHECK (kind IN ('calendar','sleep','meal','dnd','recovery')),CHECK (end_at > start_at));
     CREATE TABLE IF NOT EXISTS external_calendar_events (provider TEXT NOT NULL,external_id TEXT NOT NULL,title TEXT NOT NULL,start_at TEXT NOT NULL,end_at TEXT NOT NULL,is_all_day INTEGER NOT NULL DEFAULT 0,last_modified_at TEXT,synced_at TEXT NOT NULL,PRIMARY KEY (provider, external_id),CHECK (end_at > start_at));
     CREATE TABLE IF NOT EXISTS inventory (resource_key TEXT PRIMARY KEY NOT NULL,quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),updated_at TEXT NOT NULL);
@@ -34,5 +36,6 @@ export async function migrateDatabase() {
     CREATE INDEX IF NOT EXISTS idx_calendar_blocks_time ON calendar_blocks(start_at,end_at);
     CREATE INDEX IF NOT EXISTS idx_external_calendar_time ON external_calendar_events(start_at,end_at);
     CREATE INDEX IF NOT EXISTS idx_reward_events_session ON reward_events(session_id);
+    CREATE INDEX IF NOT EXISTS idx_focus_sessions_started ON focus_sessions(started_at);
   `);
 }
