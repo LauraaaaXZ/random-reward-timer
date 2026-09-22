@@ -12,6 +12,8 @@ export const GAME_CONFIG = {
   levelLockAfterInactiveDays: 7,
   annualLeaveMinutesPerDay: 480,
   holidayPass: {
-    coinCost: 120,
+    weeklyGrant: 1,
+    extensionCoinCost: 60,
+    maxExtensionWeeks: 1,
   },
 } as const;
