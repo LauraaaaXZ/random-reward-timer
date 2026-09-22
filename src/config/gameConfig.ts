@@ -14,7 +14,11 @@ export const GAME_CONFIG = {
   annualLeavePurchase: { unitMinutes: 60, baseCoinCost: 100, priceGrowth: 1.25 },
   holidayPass: { weeklyGrant: 1, extensionCoinCost: 60, maxExtensionWeeks: 1 },
   weeklyRoutine: {
-    shopping: { weeklyCredits: 3, weeklyMinutesCap: 360, extraCreditCoinCost: 40 },
+    leisure: {
+      weeklyCredits: 3,
+      weeklyMinutesCap: 360,
+      purchase: { coinCost: 40, creditsAdded: 1, minutesAdded: 180, weeklyPurchaseLimit: 1 },
+    },
     outdoor: { previousWeekWorkRatio: 0.5 },
   },
 } as const;
