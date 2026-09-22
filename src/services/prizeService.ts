@@ -17,7 +17,7 @@ async function settleReward(reward:PrizeReward|TenDrawChoice,source='prize_pool'
  if(reward.type==='coin')await applyReward({source,coin:reward.amount,xp:0});
  else if(reward.type==='annual_leave_minutes')await grantAnnualLeaveMinutes('minutes' in reward?reward.minutes:(reward.amount??0));
  else if(reward.type==='freedom_credit')await addFreedomCredits('quantity' in reward?reward.quantity:(reward.amount??1));
- else if(reward.type==='weekly_boost')await grantWeeklyBoost(reward.boost,reward.discountRate??.25);
+ else if(reward.type==='weekly_boost'){const quantity='quantity' in reward?(reward.quantity??1):1;for(let i=0;i<quantity;i+=1)await grantWeeklyBoost(reward.boost,reward.discountRate??.25);}
 }
 export async function settlePrizeDraw(pool:RewardPool,random=Math.random):Promise<{reward:PrizeReward;ultimateReady:boolean}>{
  await spendDraws(pool,1);
