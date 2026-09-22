@@ -1,21 +1,20 @@
 export type RewardPool='time'|'function';
-export type TenDrawChoice={pool:RewardPool;type:'annual_leave_minutes'|'freedom_credit'|'weekly_boost';amount?:number;boost?:'discount'|'limit_plus_one';label:string};
+export type TenDrawChoice={pool:RewardPool;type:'annual_leave_minutes'|'freedom_credit'|'weekly_boost';amount?:number;quantity?:number;boost?:'discount'|'limit_plus_one';label:string};
 
+// 10-draw limited rewards are calibrated at roughly 5× a normal fixed reward in the same pool.
 export const TEN_DRAW_CHOICES:Record<RewardPool,readonly TenDrawChoice[]>={
  time:[
-  {pool:'time',type:'annual_leave_minutes',amount:120,label:'+120 min Annual Leave'},
-  {pool:'time',type:'annual_leave_minutes',amount:180,label:'+180 min Annual Leave'},
-  {pool:'time',type:'annual_leave_minutes',amount:240,label:'+240 min Annual Leave'},
+  {pool:'time',type:'annual_leave_minutes',amount:150,label:'+150 min Annual Leave · 5×30m'},
+  {pool:'time',type:'annual_leave_minutes',amount:300,label:'+300 min Annual Leave · 5×60m'},
+  {pool:'time',type:'annual_leave_minutes',amount:600,label:'+600 min Annual Leave · 5×120m'},
  ],
  function:[
-  {pool:'function',type:'freedom_credit',amount:1,label:'+1 Freedom Credit'},
-  {pool:'function',type:'weekly_boost',boost:'discount',label:'25% Off Coupon · 7 days'},
-  {pool:'function',type:'weekly_boost',boost:'limit_plus_one',label:'Purchase Limit +1 · 7 days'},
+  {pool:'function',type:'freedom_credit',amount:5,label:'+5 Freedom Credits'},
+  {pool:'function',type:'weekly_boost',boost:'discount',quantity:5,label:'5 × 25% Off Coupons · 7 days'},
+  {pool:'function',type:'weekly_boost',boost:'limit_plus_one',quantity:5,label:'5 × Purchase Limit +1 Coupons · 7 days'},
  ],
 };
 
-// Completing a task grants generic draw progress plus a random Coin bonus.
-// The player decides later whether to spend banked draws in Time or Function Pool.
 export function taskCompletionReward(difficulty:'easy'|'medium'|'hard'|'super_difficult',workedMinutes:number,random=Math.random){
  const baseRanges={easy:[.15,.35],medium:[.3,.65],hard:[.55,1],super_difficult:[.8,1.5]} as const;
  const coinRanges={easy:[2,8],medium:[5,14],hard:[9,22],super_difficult:[15,35]} as const;
