@@ -5,6 +5,7 @@ import { listTasks } from '../data/taskRepository';
 import { createTaskWithDependencies, markTaskCompleted } from '../services/taskService';
 import { createScheduledRoutine, listScheduledRoutines, ScheduledRoutine } from '../data/scheduledRoutineRepository';
 import { archiveMealSchedule, createMealSchedule, listMealSchedules, MealSchedule } from '../data/mealScheduleRepository';
+import { clearSleepSchedule, getSleepSchedule, setSleepSchedule, SleepSchedule } from '../data/sleepScheduleRepository';
 
 const difficulties: { value: Difficulty; label: string }[] = [
   { value: 'easy', label: 'Easy' }, { value: 'medium', label: 'Medium' },
@@ -21,8 +22,9 @@ export function TaskManager() {
   const [saving,setSaving]=useState(false),[notice,setNotice]=useState<string|null>(null),[routines,setRoutines]=useState<ScheduledRoutine[]>([]);
   const [routineName,setRoutineName]=useState(''),[routineTarget,setRoutineTarget]=useState('23:00'),[routineStart,setRoutineStart]=useState('22:00'),[routineEnd,setRoutineEnd]=useState('23:30');
   const [meals,setMeals]=useState<MealSchedule[]>([]),[mealLabel,setMealLabel]=useState('Meal'),[mealTime,setMealTime]=useState('12:00');
-  const [entryMode,setEntryMode]=useState<'random'|'scheduled'|'meal'>('random');
-  const reload=useCallback(async()=>{const[t,r,m]=await Promise.all([listTasks(),listScheduledRoutines(),listMealSchedules()]);setTasks(t);setRoutines(r);setMeals(m)},[]);
+  const [sleep,setSleep]=useState<SleepSchedule|null>(null),[sleepStart,setSleepStart]=useState('23:30'),[sleepHours,setSleepHours]=useState('8');
+  const [entryMode,setEntryMode]=useState<'random'|'scheduled'|'meal'|'sleep'>('random');
+  const reload=useCallback(async()=>{const[t,r,m,s]=await Promise.all([listTasks(),listScheduledRoutines(),listMealSchedules(),getSleepSchedule()]);setTasks(t);setRoutines(r);setMeals(m);setSleep(s)},[]);
   useEffect(()=>{reload().catch(e=>Alert.alert('Could not load tasks',String(e)))},[reload]);
   const currentTasks=useMemo(()=>tasks.filter(t=>t.status!=='completed'&&t.status!=='archived'),[tasks]);
   const candidates=currentTasks;
@@ -31,6 +33,8 @@ export function TaskManager() {
   async function addRoutine(){try{setSaving(true);await createScheduledRoutine({name:routineName,targetTime:routineTarget,windowStart:routineStart,windowEnd:routineEnd});const confirmed=routineName.trim();setRoutineName('');await reload();setNotice(`✓ Routine confirmed · ${confirmed} · target ${routineTarget}`);setTimeout(()=>setNotice(null),4000)}catch(e){Alert.alert('Could not create routine',e instanceof Error?e.message:String(e))}finally{setSaving(false)}}
   async function addMeal(){try{setSaving(true);await createMealSchedule(mealLabel,mealTime);await reload();setNotice(`✓ Meal block confirmed · ${mealTime}–${new Date(`2000-01-01T${mealTime}:00`).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} + 60 min`);setTimeout(()=>setNotice(null),4000)}catch(e){Alert.alert('Could not create meal block',e instanceof Error?e.message:String(e))}finally{setSaving(false)}}
   async function removeMeal(id:string){try{await archiveMealSchedule(id);await reload();setNotice('✓ Meal block removed');setTimeout(()=>setNotice(null),4000)}catch(e){Alert.alert('Could not remove meal block',e instanceof Error?e.message:String(e))}}
+  async function saveSleep(){const hours=Number(sleepHours);if(!Number.isFinite(hours))return Alert.alert('Invalid sleep duration');try{setSaving(true);await setSleepSchedule(sleepStart,Math.round(hours*60));await reload();setNotice(`✓ Sleep block confirmed · ${sleepStart} · ${hours}h daily`);setTimeout(()=>setNotice(null),4000)}catch(e){Alert.alert('Could not save sleep block',e instanceof Error?e.message:String(e))}finally{setSaving(false)}}
+  async function removeSleep(){try{await clearSleepSchedule();await reload();setNotice('✓ Sleep block removed');setTimeout(()=>setNotice(null),4000)}catch(e){Alert.alert('Could not remove sleep block',e instanceof Error?e.message:String(e))}}
   function togglePrerequisite(id:string){setPrerequisiteIds(c=>c.includes(id)?c.filter(x=>x!==id):[...c,id])}
   return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
     {notice?<View style={styles.notice}><Text style={styles.noticeText}>{notice}</Text></View>:null}
@@ -40,6 +44,7 @@ export function TaskManager() {
         <Pressable onPress={()=>setEntryMode('random')} style={[styles.chip,entryMode==='random'&&styles.chipSelected]}><Text style={entryMode==='random'?styles.chipTextSelected:styles.chipText}>Random task</Text></Pressable>
         <Pressable onPress={()=>setEntryMode('scheduled')} style={[styles.chip,entryMode==='scheduled'&&styles.chipSelected]}><Text style={entryMode==='scheduled'?styles.chipTextSelected:styles.chipText}>Scheduled routine</Text></Pressable>
         <Pressable onPress={()=>setEntryMode('meal')} style={[styles.chip,entryMode==='meal'&&styles.chipSelected]}><Text style={entryMode==='meal'?styles.chipTextSelected:styles.chipText}>Meal block</Text></Pressable>
+        <Pressable onPress={()=>setEntryMode('sleep')} style={[styles.chip,entryMode==='sleep'&&styles.chipSelected]}><Text style={entryMode==='sleep'?styles.chipTextSelected:styles.chipText}>Sleep block</Text></Pressable>
       </View>
       {entryMode==='random'?<>
         <Text style={styles.label}>Task name</Text><TextInput value={name} onChangeText={setName} placeholder="e.g. Daily news reading" style={styles.input}/>
@@ -55,13 +60,19 @@ export function TaskManager() {
         <Text style={styles.label}>Target time</Text><TextInput value={routineTarget} onChangeText={setRoutineTarget} placeholder="23:00" style={styles.input}/>
         <Text style={styles.label}>Completion window</Text><View style={styles.timeRow}><TextInput value={routineStart} onChangeText={setRoutineStart} placeholder="22:00" style={[styles.input,styles.timeInput]}/><Text style={styles.timeDash}>to</Text><TextInput value={routineEnd} onChangeText={setRoutineEnd} placeholder="23:30" style={[styles.input,styles.timeInput]}/></View>
         <Pressable disabled={saving} onPress={addRoutine} style={styles.primaryButton}><Text style={styles.primaryButtonText}>{saving?'Saving…':'Add routine'}</Text></Pressable>
-      </>:<>
+      </>:entryMode==='meal'?<>
         <Text style={styles.helper}>Meals are fixed 60-minute protected blocks. They never enter random draws. Set 2–4 active meal blocks per day; the daily work guardrail activates only after at least 2 meals and sleep are configured.</Text>
         <Text style={styles.label}>Meal label</Text><TextInput value={mealLabel} onChangeText={setMealLabel} placeholder="Lunch" style={styles.input}/>
         <Text style={styles.label}>Start time · HH:MM</Text><TextInput value={mealTime} onChangeText={setMealTime} placeholder="12:00" style={styles.input}/>
         <Pressable disabled={saving||meals.length>=4} onPress={addMeal} style={[styles.primaryButton,meals.length>=4&&styles.disabled]}><Text style={styles.primaryButtonText}>{meals.length>=4?'4 meal blocks reached':saving?'Saving…':'Add 60 min meal block'}</Text></Pressable>
         <Text style={styles.helper}>{meals.length}/4 active · minimum 2 recommended</Text>
         {meals.map(m=><View key={m.id} style={styles.mealRow}><View><Text style={styles.taskName}>{m.label}</Text><Text style={styles.taskMeta}>{m.startTime} · 60 min · daily · protected</Text></View><Pressable onPress={()=>removeMeal(m.id)} style={styles.removeButton}><Text style={styles.removeText}>Remove</Text></Pressable></View>)}
+      </>:<>
+        <Text style={styles.helper}>Sleep is a recurring protected block and never enters random draws. It is deducted before daily events when calculating disposable time.</Text>
+        <Text style={styles.label}>Sleep start · HH:MM</Text><TextInput value={sleepStart} onChangeText={setSleepStart} placeholder="23:30" style={styles.input}/>
+        <Text style={styles.label}>Duration · hours</Text><TextInput value={sleepHours} onChangeText={setSleepHours} keyboardType="decimal-pad" placeholder="8" style={styles.input}/>
+        <Pressable disabled={saving} onPress={saveSleep} style={styles.primaryButton}><Text style={styles.primaryButtonText}>{saving?'Saving…':sleep?'Update sleep block':'Add sleep block'}</Text></Pressable>
+        {sleep?<View style={styles.mealRow}><View><Text style={styles.taskName}>Sleep</Text><Text style={styles.taskMeta}>{sleep.startTime} · {(sleep.durationMinutes/60).toFixed(1)}h · daily · protected</Text></View><Pressable onPress={removeSleep} style={styles.removeButton}><Text style={styles.removeText}>Remove</Text></Pressable></View>:<Text style={styles.helper}>No sleep block configured.</Text>}
       </>}
     </View>
     <Text style={styles.sectionTitle}>Current tasks</Text>
