@@ -7,6 +7,7 @@ export async function migrateDatabase() {
     CREATE TABLE IF NOT EXISTS tasks (id TEXT PRIMARY KEY NOT NULL,name TEXT NOT NULL,estimated_minutes INTEGER NOT NULL CHECK (estimated_minutes > 0),remaining_minutes INTEGER NOT NULL CHECK (remaining_minutes >= 0),difficulty TEXT NOT NULL CHECK (difficulty IN ('easy','medium','hard','super_difficult')),status TEXT NOT NULL CHECK (status IN ('active','locked','completed','archived')),deadline_at TEXT,final_work_window_at TEXT,preferred_today INTEGER NOT NULL DEFAULT 0,avoidance_count INTEGER NOT NULL DEFAULT 0,recovery_stack REAL NOT NULL DEFAULT 0,created_at TEXT NOT NULL,completed_at TEXT);
     CREATE TABLE IF NOT EXISTS task_dependencies (prerequisite_task_id TEXT NOT NULL,dependent_task_id TEXT NOT NULL,PRIMARY KEY (prerequisite_task_id, dependent_task_id),FOREIGN KEY (prerequisite_task_id) REFERENCES tasks(id) ON DELETE CASCADE,FOREIGN KEY (dependent_task_id) REFERENCES tasks(id) ON DELETE CASCADE,CHECK (prerequisite_task_id <> dependent_task_id));
     CREATE TABLE IF NOT EXISTS daily_task_rules (task_id TEXT PRIMARY KEY NOT NULL,pool_mode TEXT NOT NULL CHECK (pool_mode IN ('fragment','easy_pool','both')),last_completed_local_date TEXT,FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE);
+    CREATE TABLE IF NOT EXISTS task_schedule_blocks (id TEXT PRIMARY KEY NOT NULL,task_id TEXT NOT NULL,start_at TEXT NOT NULL,end_at TEXT NOT NULL,created_at TEXT NOT NULL,FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,CHECK (end_at > start_at));
     CREATE TABLE IF NOT EXISTS scheduled_routines (id TEXT PRIMARY KEY NOT NULL,name TEXT NOT NULL,target_time TEXT NOT NULL,window_start TEXT NOT NULL,window_end TEXT NOT NULL,repeat_mode TEXT NOT NULL DEFAULT 'daily' CHECK (repeat_mode IN ('daily')),active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS routine_completions (routine_id TEXT NOT NULL,local_date TEXT NOT NULL,completed_at TEXT NOT NULL,PRIMARY KEY (routine_id,local_date),FOREIGN KEY (routine_id) REFERENCES scheduled_routines(id) ON DELETE CASCADE);
     CREATE TABLE IF NOT EXISTS meal_schedules (id TEXT PRIMARY KEY NOT NULL,label TEXT NOT NULL,start_time TEXT NOT NULL,duration_minutes INTEGER NOT NULL DEFAULT 60 CHECK (duration_minutes = 60),active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),created_at TEXT NOT NULL);
@@ -34,6 +35,8 @@ export async function migrateDatabase() {
     INSERT OR IGNORE INTO prize_progress (id,lifetime_draws,draws_since_ultimate,ultimate_claims,updated_at) VALUES (1,0,0,0,datetime('now'));
     CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
     CREATE INDEX IF NOT EXISTS idx_tasks_deadline ON tasks(deadline_at);
+    CREATE INDEX IF NOT EXISTS idx_task_schedule_time ON task_schedule_blocks(start_at,end_at);
+    CREATE INDEX IF NOT EXISTS idx_task_schedule_task ON task_schedule_blocks(task_id);
     CREATE INDEX IF NOT EXISTS idx_dependencies_dependent ON task_dependencies(dependent_task_id);
     CREATE INDEX IF NOT EXISTS idx_daily_rules_completed ON daily_task_rules(last_completed_local_date);
     CREATE INDEX IF NOT EXISTS idx_routine_active ON scheduled_routines(active);
