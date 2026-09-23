@@ -39,7 +39,7 @@ export interface FocusSession {
   endedAt?: string;
 }
 
-export type CalendarBlockKind = 'calendar' | 'sleep' | 'meal' | 'task' | 'dnd' | 'recovery';
+export type CalendarBlockKind = 'calendar' | 'sleep' | 'meal' | 'task' | 'routine' | 'dnd' | 'recovery';
 
 export interface CalendarBlock {
   id: string;
