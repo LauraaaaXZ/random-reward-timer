@@ -7,6 +7,20 @@ export type SleepSession={localDate:string;actualStartAt:string;actualEndAt:stri
 function validateTime(value:string){
   if(!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value))throw new Error('Use HH:MM.');
 }
+function localDateKey(date=new Date()){return`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`}
+async function findSleepConflict(start:Date,end:Date){
+  const db=await getDatabase(),s=start.toISOString(),e=end.toISOString();
+  const fixed=await db.getFirstAsync<{title:string}>('SELECT title FROM calendar_blocks WHERE end_at>? AND start_at<? LIMIT 1',s,e)
+    ??await db.getFirstAsync<{title:string}>('SELECT title FROM external_calendar_events WHERE end_at>? AND start_at<? LIMIT 1',s,e)
+    ??await db.getFirstAsync<{title:string}>(`SELECT t.name AS title FROM task_schedule_blocks b JOIN tasks t ON t.id=b.task_id WHERE b.end_at>? AND b.start_at<? AND t.status NOT IN ('archived','completed') LIMIT 1`,s,e)
+    ??await db.getFirstAsync<{title:string}>('SELECT label AS title FROM meal_blocks WHERE end_at>? AND start_at<? LIMIT 1',s,e);
+  if(fixed)return fixed.title;
+  const routines=await db.getAllAsync<{name:string;window_start:string;window_end:string}>('SELECT name,window_start,window_end FROM scheduled_routines WHERE active=1');
+  const cursor=new Date(start);cursor.setHours(0,0,0,0);cursor.setDate(cursor.getDate()-1);
+  const limit=new Date(end);limit.setDate(limit.getDate()+1);
+  while(cursor<limit){const day=localDateKey(cursor);for(const r of routines){const rs=new Date(`${day}T${r.window_start}:00`),re=new Date(`${day}T${r.window_end}:00`);if(re>start&&rs<end)return r.name}cursor.setDate(cursor.getDate()+1)}
+  return null;
+}
 export async function getSleepSchedule():Promise<SleepSchedule|null>{
   const db=await getDatabase();
   const r=await db.getFirstAsync<{id:string;start_time:string;duration_minutes:number;active:number;created_at:string}>(
@@ -16,6 +30,8 @@ export async function getSleepSchedule():Promise<SleepSchedule|null>{
 }
 export async function setSleepSchedule(startTime:string){
   validateTime(startTime);
+  const today=localDateKey(),start=new Date(`${today}T${startTime}:00`),end=new Date(start.getTime()+480*60000);
+  const conflict=await findSleepConflict(start,end);if(conflict)throw new Error(`TIME_CONFLICT:${conflict}`);
   const db=await getDatabase(),id=randomUUID(),now=new Date().toISOString();
   await db.withTransactionAsync(async()=>{
     await db.runAsync('UPDATE sleep_schedules SET active=0 WHERE active=1');
