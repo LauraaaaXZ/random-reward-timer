@@ -6,7 +6,6 @@ import{archiveMealSchedule,createMealSchedule,listMealSchedules,MealSchedule}fro
 import{getSleepSchedule,setSleepSchedule}from'../data/sleepScheduleRepository';
 import{listScheduledRoutines}from'../data/scheduledRoutineRepository';
 import{listTasks}from'../data/taskRepository';
-import{listTaskScheduleBlocks}from'../data/taskScheduleRepository';
 import{syncDeviceCalendars}from'../integrations/deviceCalendar';
 
 type Item={id:string;date:string;start:string;end?:string;title:string;kind:'event'|'routine'|'meal'|'sleep'|'task'|'deadline'};
@@ -22,9 +21,9 @@ export function CalendarScreen(){
  const[items,setItems]=useState<Item[]>([]),[syncing,setSyncing]=useState(false),[lastSync,setLastSync]=useState<Date|null>(null),[settings,setSettings]=useState(false),[mealDate,setMealDate]=useState(dateKey(new Date())),[mealTime,setMealTime]=useState('12:00'),[mealLabel,setMealLabel]=useState('Meal'),[meals,setMeals]=useState<MealSchedule[]>([]),[sleepTime,setSleepTime]=useState('23:30');
  const load=useCallback(async()=>{
   const rangeStart=dayBounds(days[0]!).start,rangeEnd=dayBounds(addDays(days[13]!,1)).start;
-  const [routines,tasks,taskBlocks]=await Promise.all([listScheduledRoutines(),listTasks(),listTaskScheduleBlocks(rangeStart,rangeEnd)]);const out:Item[]=[];
-  for(const d of days){const k=dateKey(d),b=dayBounds(d),events=await listCalendarBlocks(b.start,b.end);events.forEach((e:CalendarBlock)=>out.push({id:`e:${e.id}`,date:k,start:clock(new Date(e.startAt)),end:clock(new Date(e.endAt)),title:e.title,kind:e.kind==='meal'?'meal':e.kind==='sleep'?'sleep':'event'}));routines.forEach(r=>out.push({id:`r:${r.id}:${k}`,date:k,start:r.windowStart,end:r.windowEnd,title:r.name,kind:'routine'}))}
-  taskBlocks.forEach(b=>{const d=new Date(b.startAt),k=dateKey(d);out.push({id:`tb:${b.id}`,date:k,start:clock(d),end:clock(new Date(b.endAt)),title:b.taskName,kind:'task'})});tasks.forEach(t=>{if(!t.deadlineAt)return;const d=new Date(t.deadlineAt),k=dateKey(d);if(days.some(x=>dateKey(x)===k))out.push({id:`t:${t.id}`,date:k,start:clock(d),title:`Deadline · ${t.name}`,kind:'deadline'})});out.sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));setItems(out);
+  const [routines,tasks]=await Promise.all([listScheduledRoutines(),listTasks()]);const out:Item[]=[];
+  for(const d of days){const k=dateKey(d),b=dayBounds(d),events=await listCalendarBlocks(b.start,b.end);events.forEach((e:CalendarBlock)=>out.push({id:`e:${e.id}`,date:k,start:clock(new Date(e.startAt)),end:clock(new Date(e.endAt)),title:e.title,kind:e.kind==='meal'?'meal':e.kind==='sleep'?'sleep':e.kind==='task'?'task':'event'}));routines.forEach(r=>out.push({id:`r:${r.id}:${k}`,date:k,start:r.windowStart,end:r.windowEnd,title:r.name,kind:'routine'}))}
+tasks.forEach(t=>{if(!t.deadlineAt)return;const d=new Date(t.deadlineAt),k=dateKey(d);if(days.some(x=>dateKey(x)===k))out.push({id:`t:${t.id}`,date:k,start:clock(d),title:`Deadline · ${t.name}`,kind:'deadline'})});out.sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));setItems(out);
   const [ms,sl]=await Promise.all([listMealSchedules(mealDate),getSleepSchedule()]);setMeals(ms);if(sl)setSleepTime(sl.startTime);
  },[days,mealDate]);
  const sync=useCallback(async(silent=false)=>{if(syncing)return;setSyncing(true);try{await syncDeviceCalendars();setLastSync(new Date());await load()}catch(e){if(!silent)Alert.alert('Calendar sync failed',e instanceof Error?e.message:String(e));else await load()}finally{setSyncing(false)}},[load,syncing]);
