@@ -44,3 +44,12 @@ export function difficultyTasks(tasks: Task[], now = new Date()) {
 export function preferredTasks(tasks: Task[], now = new Date()) {
   return eligibleTasks(tasks, now).filter((task) => task.preferredToday);
 }
+
+export function lowIntensityTasks(tasks: Task[], now = new Date()) {
+  return tasks.filter(
+    (task) =>
+      task.status === 'active' &&
+      task.remainingMinutes > 0 &&
+      !wasDailyTaskCompletedToday(task, now),
+  );
+}
