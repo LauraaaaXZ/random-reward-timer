@@ -6,10 +6,6 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#071B45",
-    "splash": {
-      "resizeMode": "contain",
-      "backgroundColor": "#071B45"
-    },
     "plugins": [
       [
         "expo-calendar",
