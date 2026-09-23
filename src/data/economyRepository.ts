@@ -2,89 +2,11 @@ import { getDatabase } from './database';
 import { randomUUID } from '../utils/id';
 
 export type Wallet = { coin: number; xp: number; level: number };
+export type RewardLedgerEvent={id:string;source:string;coinDelta:number;xpDelta:number;multiplier:number;createdAt:string};
 
-export function levelFromXp(xp: number) {
-  return Math.floor(Math.sqrt(Math.max(0, xp) / 100)) + 1;
-}
-
-export function xpForLevel(level: number) {
-  return 100 * Math.max(0, level - 1) ** 2;
-}
-
-export function xpProgress(xp: number) {
-  const level = levelFromXp(xp);
-  const currentLevelXp = xpForLevel(level);
-  const nextLevelXp = xpForLevel(level + 1);
-  const span = Math.max(1, nextLevelXp - currentLevelXp);
-  const earnedInLevel = Math.max(0, xp - currentLevelXp);
-  return {
-    level,
-    currentLevelXp,
-    nextLevelXp,
-    earnedInLevel,
-    neededInLevel: span,
-    remainingToNextLevel: Math.max(0, nextLevelXp - xp),
-    progress: Math.min(1, earnedInLevel / span),
-  };
-}
-
-export async function getWallet(): Promise<Wallet> {
-  const db = await getDatabase();
-  const row = await db.getFirstAsync<Wallet>('SELECT coin, xp, level FROM wallet WHERE id = 1');
-  return row ?? { coin: 0, xp: 0, level: 1 };
-}
-
-export async function applyReward(input: {
-  sessionId?: string;
-  source: string;
-  coin: number;
-  xp: number;
-  multiplier?: number;
-}) {
-  const db = await getDatabase();
-  const current = await getWallet();
-
-  // A focus session may only settle its wallet reward once. This protects Alpha
-  // users from double taps/retries crediting the same completed session twice.
-  if (input.sessionId) {
-    const existing = await db.getFirstAsync<{ id: string }>(
-      'SELECT id FROM reward_events WHERE session_id = ? LIMIT 1',
-      input.sessionId,
-    );
-    if (existing) return current;
-  }
-
-  const nextXp = current.xp + input.xp;
-  const nextLevel = levelFromXp(nextXp);
-  const now = new Date().toISOString();
-
-  await db.withTransactionAsync(async () => {
-    if (input.sessionId) {
-      const existing = await db.getFirstAsync<{ id: string }>(
-        'SELECT id FROM reward_events WHERE session_id = ? LIMIT 1',
-        input.sessionId,
-      );
-      if (existing) return;
-    }
-    await db.runAsync(
-      'UPDATE wallet SET coin = coin + ?, xp = ?, level = ?, updated_at = ? WHERE id = 1',
-      input.coin,
-      nextXp,
-      nextLevel,
-      now,
-    );
-    await db.runAsync(
-      `INSERT INTO reward_events (id, session_id, source, coin_delta, xp_delta, multiplier, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      randomUUID(),
-      input.sessionId ?? null,
-      input.source,
-      input.coin,
-      input.xp,
-      input.multiplier ?? 1,
-      now,
-    );
-  });
-
-  return getWallet();
-}
+export function levelFromXp(xp: number) {return Math.floor(Math.sqrt(Math.max(0, xp) / 100)) + 1;}
+export function xpForLevel(level: number) {return 100 * Math.max(0, level - 1) ** 2;}
+export function xpProgress(xp: number) {const level=levelFromXp(xp),currentLevelXp=xpForLevel(level),nextLevelXp=xpForLevel(level+1),span=Math.max(1,nextLevelXp-currentLevelXp),earnedInLevel=Math.max(0,xp-currentLevelXp);return{level,currentLevelXp,nextLevelXp,earnedInLevel,neededInLevel:span,remainingToNextLevel:Math.max(0,nextLevelXp-xp),progress:Math.min(1,earnedInLevel/span)};}
+export async function getWallet(): Promise<Wallet> {const db=await getDatabase();const row=await db.getFirstAsync<Wallet>('SELECT coin, xp, level FROM wallet WHERE id = 1');return row??{coin:0,xp:0,level:1};}
+export async function listRewardLedger(limit=100):Promise<RewardLedgerEvent[]>{const db=await getDatabase();const rows=await db.getAllAsync<{id:string;source:string;coin_delta:number;xp_delta:number;multiplier:number;created_at:string}>('SELECT id,source,coin_delta,xp_delta,multiplier,created_at FROM reward_events ORDER BY created_at DESC LIMIT ?',limit);return rows.map(r=>({id:r.id,source:r.source,coinDelta:r.coin_delta,xpDelta:r.xp_delta,multiplier:r.multiplier,createdAt:r.created_at}));}
+export async function applyReward(input:{sessionId?:string;source:string;coin:number;xp:number;multiplier?:number}){const db=await getDatabase(),current=await getWallet();if(input.sessionId){const existing=await db.getFirstAsync<{id:string}>('SELECT id FROM reward_events WHERE session_id = ? LIMIT 1',input.sessionId);if(existing)return current;}const nextXp=current.xp+input.xp,nextLevel=levelFromXp(nextXp),now=new Date().toISOString();await db.withTransactionAsync(async()=>{if(input.sessionId){const existing=await db.getFirstAsync<{id:string}>('SELECT id FROM reward_events WHERE session_id = ? LIMIT 1',input.sessionId);if(existing)return;}await db.runAsync('UPDATE wallet SET coin = coin + ?, xp = ?, level = ?, updated_at = ? WHERE id = 1',input.coin,nextXp,nextLevel,now);await db.runAsync(`INSERT INTO reward_events (id, session_id, source, coin_delta, xp_delta, multiplier, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,randomUUID(),input.sessionId??null,input.source,input.coin,input.xp,input.multiplier??1,now);});return getWallet();}
