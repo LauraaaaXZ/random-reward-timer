@@ -1,0 +1,10 @@
+export type ThemeId='blue_rabbit'|'black_cat'|'ggbond'|'lazy_sheep'|'hello_kitty';
+export type AppTheme={id:ThemeId;name:string;subtitle:string;emoji:string;free:boolean;colors:{background:string;surface:string;surfaceAlt:string;text:string;muted:string;accent:string;accentSoft:string;border:string;nav:string;onAccent:string;success:string;danger:string}};
+export const THEME_RENT_COIN=30;export const THEME_RENT_DAYS=7;
+export const THEMES:Record<ThemeId,AppTheme>={
+blue_rabbit:{id:'blue_rabbit',name:'蓝兔',subtitle:'江湖蓝 · 温柔而坚定',emoji:'🐰',free:true,colors:{background:'#EAF6FF',surface:'#FFFFFF',surfaceAlt:'#DCEFFF',text:'#12335C',muted:'#6482A4',accent:'#2F80ED',accentSoft:'#D8EBFF',border:'#C8E2F8',nav:'#F7FBFF',onAccent:'#FFFFFF',success:'#2F9E74',danger:'#C94B55'}},
+black_cat:{id:'black_cat',name:'黑猫警长',subtitle:'午夜黑 · 冷静与警觉',emoji:'🐈‍⬛',free:false,colors:{background:'#0B1020',surface:'#151C2F',surfaceAlt:'#202A42',text:'#F5F7FB',muted:'#99A5BC',accent:'#F4C95D',accentSoft:'#302B25',border:'#293650',nav:'#0D1323',onAccent:'#111827',success:'#5FD09A',danger:'#FF7A7A'}},
+ggbond:{id:'ggbond',name:'GG Bond',subtitle:'热血红 · 加油向前',emoji:'🐷',free:false,colors:{background:'#FFF0EE',surface:'#FFFFFF',surfaceAlt:'#FFE0DB',text:'#6B1717',muted:'#A65B59',accent:'#E8443A',accentSoft:'#FFD8D3',border:'#F5C2BC',nav:'#FFF8F6',onAccent:'#FFFFFF',success:'#3C9B70',danger:'#C62F2F'}},
+lazy_sheep:{id:'lazy_sheep',name:'懒羊羊',subtitle:'治愈绿 · 轻松完成',emoji:'🐑',free:false,colors:{background:'#EFF9EE',surface:'#FFFFFF',surfaceAlt:'#DDF1D9',text:'#214D2B',muted:'#66866B',accent:'#55A65A',accentSoft:'#D7EED4',border:'#C8E3C5',nav:'#F8FCF7',onAccent:'#FFFFFF',success:'#378B55',danger:'#C25757'}},
+hello_kitty:{id:'hello_kitty',name:'Hello Kitty',subtitle:'甜心粉 · 可爱陪伴',emoji:'🎀',free:false,colors:{background:'#FFF0F5',surface:'#FFFFFF',surfaceAlt:'#FFE0EA',text:'#6D2942',muted:'#A66A80',accent:'#F16C9A',accentSoft:'#FFD9E6',border:'#F4C4D5',nav:'#FFF8FB',onAccent:'#FFFFFF',success:'#45986B',danger:'#C94B6A'}};
+export const DEFAULT_THEME_ID:ThemeId='blue_rabbit';
