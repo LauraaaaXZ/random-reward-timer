@@ -26,16 +26,17 @@ export async function syncDeviceCalendars(now=new Date()):Promise<DeviceCalendar
   const normalized=events.flatMap(e=>{
     const startDate=new Date(e.startDate),endDate=new Date(e.endDate);
     const startMs=startDate.getTime(),endMs=endDate.getTime();
-    if(!Number.isFinite(startMs)||!Number.isFinite(endMs)||endMs<=startMs){
+    if(!Number.isFinite(startMs)||!Number.isFinite(endMs)||endMs<startMs){
       console.warn('Skipping invalid calendar event',e.id,e.title,e.startDate,e.endDate);
       return [];
     }
+    const storedEndDate=endMs===startMs?new Date(startMs+1000):endDate;
     return [{
       provider:PROVIDER,
       externalId:`${e.calendarId}:${e.id}`,
       title:e.title||'Calendar event',
       startAt:startDate.toISOString(),
-      endAt:endDate.toISOString(),
+      endAt:storedEndDate.toISOString(),
       isAllDay:Boolean(e.allDay),
       lastModifiedAt:e.lastModifiedDate?new Date(e.lastModifiedDate).toISOString():undefined,
     }];
