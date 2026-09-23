@@ -15,7 +15,8 @@
     ],
     "android": {
       "package": "com.randomrewardtimer.app",
-      "permissions": ["READ_CALENDAR", "WRITE_CALENDAR"]
+      "permissions": ["READ_CALENDAR"],
+      "blockedPermissions": ["android.permission.WRITE_CALENDAR"]
     }
   }
 }
