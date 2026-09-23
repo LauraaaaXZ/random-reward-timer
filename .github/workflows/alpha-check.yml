@@ -16,15 +16,7 @@ jobs:
           node-version: 22
       - run: npm install
       - name: TypeScript
-        run: |
-          set -o pipefail
-          npm run typecheck 2>&1 | tee typecheck.log
-      - name: Upload TypeScript log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: typecheck-log
-          path: typecheck.log
+        run: npm run typecheck
       - name: Expo Doctor
         run: npm run doctor
       - name: Android JS bundle smoke test
