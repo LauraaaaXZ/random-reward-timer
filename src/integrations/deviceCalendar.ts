@@ -6,18 +6,17 @@ import {
 } from 'expo-calendar';
 import {replaceExternalCalendarEvents} from '../data/calendarRepository';
 
-export const DEVICE_CALENDAR_NAMES=['日历','courses','MAIB7001','MAIB7002','MAIB7003','MAIB7005','boxing','tennis SmartPlay'] as const;
-const INCLUDED=new Set<string>(DEVICE_CALENDAR_NAMES);
 const PROVIDER='device-calendar';
-
 export type DeviceCalendarSyncResult={calendarNames:string[];eventCount:number;skippedEventCount:number;startAt:string;endAt:string};
 
 export async function syncDeviceCalendars(now=new Date()):Promise<DeviceCalendarSyncResult>{
   const permission=await requestCalendarPermissions();
-  if(permission.status!=='granted')throw new Error('Calendar permission is required to sync Outlook events from your phone.');
+  if(permission.status!=='granted')throw new Error('Calendar permission is required to sync events from your phone.');
 
+  // Sync every event calendar exposed by Android. Holiday calendars remain visible as
+  // calendar context only; authoritative leave/holiday entitlement is handled separately.
   const calendars=await getCalendars(EntityTypes.EVENT);
-  const selected=calendars.filter(c=>INCLUDED.has(c.title));
+  const selected=calendars;
 
   const start=new Date(now);start.setDate(start.getDate()-7);start.setHours(0,0,0,0);
   const end=new Date(now);end.setDate(end.getDate()+90);end.setHours(23,59,59,999);
@@ -43,6 +42,5 @@ export async function syncDeviceCalendars(now=new Date()):Promise<DeviceCalendar
   });
 
   await replaceExternalCalendarEvents(PROVIDER,start.toISOString(),end.toISOString(),normalized);
-
   return{calendarNames:selected.map(c=>c.title),eventCount:normalized.length,skippedEventCount:events.length-normalized.length,startAt:start.toISOString(),endAt:end.toISOString()};
 }
