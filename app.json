@@ -2,7 +2,7 @@
   "expo": {
     "name": "Random Reward",
     "slug": "random-reward-timer",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#071B45",
