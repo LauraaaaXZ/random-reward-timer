@@ -1,6 +1,6 @@
 export type ThemeId='blue_rabbit'|'black_cat'|'ggbond'|'lazy_sheep'|'hello_kitty';
 export type AppTheme={id:ThemeId;name:string;subtitle:string;emoji:string;free:boolean;colors:{background:string;surface:string;surfaceAlt:string;text:string;muted:string;accent:string;accentSoft:string;border:string;nav:string;onAccent:string;success:string;danger:string}};
-export const THEME_RENT_COIN=30;export const THEME_RENT_DAYS=7;
+export const THEME_RENT_COIN=10;export const THEME_RENT_DAYS=7;
 export const THEMES:Record<ThemeId,AppTheme>={
 blue_rabbit:{id:'blue_rabbit',name:'蓝兔',subtitle:'江湖蓝 · 温柔而坚定',emoji:'🐰',free:true,colors:{background:'#EAF6FF',surface:'#FFFFFF',surfaceAlt:'#DCEFFF',text:'#12335C',muted:'#6482A4',accent:'#2F80ED',accentSoft:'#D8EBFF',border:'#C8E2F8',nav:'#F7FBFF',onAccent:'#FFFFFF',success:'#2F9E74',danger:'#C94B55'}},
 black_cat:{id:'black_cat',name:'黑猫警长',subtitle:'午夜黑 · 冷静与警觉',emoji:'🐈‍⬛',free:false,colors:{background:'#0B1020',surface:'#151C2F',surfaceAlt:'#202A42',text:'#F5F7FB',muted:'#99A5BC',accent:'#F4C95D',accentSoft:'#302B25',border:'#293650',nav:'#0D1323',onAccent:'#111827',success:'#5FD09A',danger:'#FF7A7A'}},
