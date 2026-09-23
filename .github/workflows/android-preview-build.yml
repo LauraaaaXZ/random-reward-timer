@@ -1,0 +1,32 @@
+name: Android Preview APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'app.json'
+      - 'package.json'
+      - 'src/**'
+      - 'eas.json'
+      - '.github/workflows/android-preview-build.yml'
+
+concurrency:
+  group: android-preview-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - name: Validate
+        run: npm run check
+      - name: Build preview APK on EAS
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx eas-cli@latest build --platform android --profile preview --non-interactive
