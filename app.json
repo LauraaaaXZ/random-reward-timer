@@ -1,22 +1,30 @@
 {
   "expo": {
-    "name": "Random Reward Timer",
+    "name": "Random Reward",
     "slug": "random-reward-timer",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "backgroundColor": "#071B45",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#071B45"
+    },
     "plugins": [
       [
         "expo-calendar",
         {
-          "calendarPermission": "Allow Random Reward Timer to read your device calendars for scheduling and conflict detection."
+          "calendarPermission": "Allow Random Reward to read your device calendars for scheduling and conflict detection."
         }
       ]
     ],
     "android": {
       "package": "com.randomrewardtimer.app",
       "permissions": ["READ_CALENDAR"],
-      "blockedPermissions": ["android.permission.WRITE_CALENDAR"]
+      "blockedPermissions": ["android.permission.WRITE_CALENDAR"],
+      "adaptiveIcon": {
+        "backgroundColor": "#071B45"
+      }
     }
   }
 }
