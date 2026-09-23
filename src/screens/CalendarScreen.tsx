@@ -19,7 +19,7 @@ const label=(d:Date)=>d.toLocaleDateString([],{weekday:'short',month:'short',day
 
 export function CalendarScreen(){
  const weekStart=useMemo(()=>monday(),[]),days=useMemo(()=>Array.from({length:14},(_,i)=>addDays(weekStart,i)),[weekStart]);
- const[items,setItems]=useState<Item[]>([]),[syncing,setSyncing]=useState(false),[lastSync,setLastSync]=useState<Date|null>(null),[settings,setSettings]=useState(false),[mealDate,setMealDate]=useState(dateKey()),[mealTime,setMealTime]=useState('12:00'),[mealLabel,setMealLabel]=useState('Meal'),[meals,setMeals]=useState<MealSchedule[]>([]),[sleepTime,setSleepTime]=useState('23:30');
+ const[items,setItems]=useState<Item[]>([]),[syncing,setSyncing]=useState(false),[lastSync,setLastSync]=useState<Date|null>(null),[settings,setSettings]=useState(false),[mealDate,setMealDate]=useState(dateKey(new Date())),[mealTime,setMealTime]=useState('12:00'),[mealLabel,setMealLabel]=useState('Meal'),[meals,setMeals]=useState<MealSchedule[]>([]),[sleepTime,setSleepTime]=useState('23:30');
  const load=useCallback(async()=>{
   const rangeStart=dayBounds(days[0]!).start,rangeEnd=dayBounds(addDays(days[13]!,1)).start;
   const [routines,tasks,taskBlocks]=await Promise.all([listScheduledRoutines(),listTasks(),listTaskScheduleBlocks(rangeStart,rangeEnd)]);const out:Item[]=[];
