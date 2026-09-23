@@ -19,7 +19,7 @@ export function CalendarScreen(){
  const weekStart=useMemo(()=>monday(),[]),days=useMemo(()=>Array.from({length:14},(_,i)=>addDays(weekStart,i)),[weekStart]);
  const[items,setItems]=useState<Item[]>([]),[syncing,setSyncing]=useState(false),[lastSync,setLastSync]=useState<Date|null>(null);
  const load=useCallback(async()=>{
-  const rangeStart=dayBounds(days[0]).start,rangeEnd=dayBounds(addDays(days[13],1)).start;
+  const rangeStart=dayBounds(days[0]!).start,rangeEnd=dayBounds(addDays(days[13]!,1)).start;
   const [routines,tasks,taskBlocks]=await Promise.all([listScheduledRoutines(),listTasks(),listTaskScheduleBlocks(rangeStart,rangeEnd)]);
   const out:Item[]=[];
   for(const d of days){const k=dateKey(d),b=dayBounds(d),events=await listCalendarBlocks(b.start,b.end);
